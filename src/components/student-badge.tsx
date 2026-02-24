@@ -52,7 +52,7 @@ export default function StudentBadge({ student, background }: StudentBadgeProps)
             width: '45%',
             height: '7%',
             fontSize: 'clamp(0.8rem, 2.5vw, 1.1rem)',
-            color: 'white',
+            color: '#2a4d7a',
           }}
         >
           {student.name}
@@ -67,7 +67,7 @@ export default function StudentBadge({ student, background }: StudentBadgeProps)
             width: '45%',
             height: '7%',
             fontSize: 'clamp(0.8rem, 2.5vw, 1.1rem)',
-            color: 'white',
+            color: '#2a4d7a',
           }}
         >
           {student.turma}
