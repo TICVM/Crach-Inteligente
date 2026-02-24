@@ -58,17 +58,17 @@ export default function BulkImportCard({ onImport }: BulkImportCardProps) {
       
       const newStudents: Omit<Student, 'id'>[] = [];
       const promises = studentData.map((row, index) => {
-        const name = row[0]?.toString().trim();
+        const nome = row[0]?.toString().trim();
         const turma = row[1]?.toString().trim();
         const photoFile = sortedPhotos[index];
 
-        if (!name || !turma || !photoFile) return null;
+        if (!nome || !turma || !photoFile) return null;
         
         return new Promise<Omit<Student, 'id'>>((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (e) => {
-                const photo = e.target?.result as string;
-                resolve({ name, turma, photo });
+                const fotoUrl = e.target?.result as string;
+                resolve({ nome, turma, fotoUrl });
             };
             reader.onerror = reject;
             reader.readAsDataURL(photoFile);

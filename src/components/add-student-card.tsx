@@ -29,9 +29,9 @@ export default function AddStudentCard({ onAddStudent, badgeStyle }: AddStudentC
     }, {} as Record<string, z.ZodOptional<z.ZodString>>);
 
     return z.object({
-      name: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
+      nome: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
       turma: z.string().min(1, "A turma é obrigatória."),
-      photo: z.any().refine(fileList => fileList && fileList.length === 1, "A foto é obrigatória."),
+      fotoUrl: z.any().refine(fileList => fileList && fileList.length === 1, "A foto é obrigatória."),
       ...customFieldsSchema,
     });
   }, [badgeStyle.customFields]);
@@ -41,18 +41,18 @@ export default function AddStudentCard({ onAddStudent, badgeStyle }: AddStudentC
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
+      nome: "",
       turma: "",
-      photo: undefined,
+      fotoUrl: undefined,
     },
   });
 
-  const photoRef = form.register("photo");
+  const photoRef = form.register("fotoUrl");
 
   const onSubmit: SubmitHandler<FormValues> = (data) => {
-    const file = data.photo?.[0];
+    const file = data.fotoUrl?.[0];
     if (file) {
-      const { name, turma, photo, ...customDataValues } = data;
+      const { nome, turma, fotoUrl, ...customDataValues } = data;
       
       const customData = Object.entries(customDataValues).reduce((acc, [key, value]) => {
           if (value) {
@@ -64,15 +64,15 @@ export default function AddStudentCard({ onAddStudent, badgeStyle }: AddStudentC
       const reader = new FileReader();
       reader.onload = (e) => {
         const photoDataUrl = e.target?.result as string;
-        onAddStudent({ name, turma, photo: photoDataUrl, customData });
+        onAddStudent({ nome, turma, fotoUrl: photoDataUrl, customData });
         form.reset();
         // Manually reset custom fields as well
         const defaultCustomValues: {[key: string]: string} = {};
         badgeStyle.customFields.forEach(f => defaultCustomValues[f.id] = '');
         form.reset({
-            name: "",
+            nome: "",
             turma: "",
-            photo: undefined,
+            fotoUrl: undefined,
             ...defaultCustomValues,
         });
 
@@ -101,7 +101,7 @@ export default function AddStudentCard({ onAddStudent, badgeStyle }: AddStudentC
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="name"
+              name="nome"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Nome</FormLabel>
@@ -127,7 +127,7 @@ export default function AddStudentCard({ onAddStudent, badgeStyle }: AddStudentC
             />
             <FormField
               control={form.control}
-              name="photo"
+              name="fotoUrl"
               render={() => (
                 <FormItem>
                   <FormLabel>Foto</FormLabel>

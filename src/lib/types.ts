@@ -1,7 +1,7 @@
 export interface Student {
   id: string;
-  name: string;
+  nome: string;
   turma: string;
-  photo: string; // Base64 data URL
+  fotoUrl: string; // Base64 data URL
   customData?: { [key: string]: string };
 }

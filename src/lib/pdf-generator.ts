@@ -110,7 +110,7 @@ export const generatePdf = async (students: Student[], backgroundUrl: string, st
         pdf.addImage(backgroundDataUrl, 'PNG', x, y, badgeWidth, badgeHeight);
 
         // 2. Add Photo
-        const studentPhotoDataUrl = student.photo.startsWith('data:') ? student.photo : await toDataURL(student.photo);
+        const studentPhotoDataUrl = student.fotoUrl.startsWith('data:') ? student.fotoUrl : await toDataURL(student.fotoUrl);
         pdf.addImage(
             studentPhotoDataUrl, 'PNG', 
             x + styles.photo.x * pxToMmX, 
@@ -143,7 +143,7 @@ export const generatePdf = async (students: Student[], backgroundUrl: string, st
         }
 
         // 3. Add Name, Turma and Custom Fields
-        renderTextOnPdf(student.name, styles.name, x, y);
+        renderTextOnPdf(student.nome, styles.name, x, y);
         renderTextOnPdf(student.turma, styles.turma, x, y);
         styles.customFields.forEach(field => {
             const value = student.customData?.[field.id];

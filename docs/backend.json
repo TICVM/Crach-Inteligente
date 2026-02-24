@@ -8,7 +8,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Identificador único para a entidade Aluno."
+          "description": "Identificador único para a entidade Aluno gerado pelo Firestore."
         },
         "nome": {
           "type": "string",
@@ -20,15 +20,14 @@
         },
         "fotoUrl": {
           "type": "string",
-          "description": "URL ou identificador da imagem de perfil do aluno, armazenada em um serviço de armazenamento de arquivos (ex: Firebase Storage). (Relationship: Aluno 1:1 Foto)"
+          "description": "URL de dados (Data URL) da imagem de perfil do aluno."
         },
-        "sloganGerado": {
-          "type": "string",
-          "description": "Lema ou slogan inspirador gerado por IA para o aluno, a ser exibido no crachá. Este campo é opcional e pode ser preenchido pela funcionalidade de IA."
+        "customData": {
+          "type": "object",
+          "description": "Objeto para armazenar campos e valores personalizados definidos pelo usuário (ex: Matrícula, Validade)."
         }
       },
       "required": [
-        "id",
         "nome",
         "turma",
         "fotoUrl"
@@ -75,7 +74,7 @@
           "schema": {
             "$ref": "#/backend/entities/Aluno"
           },
-          "description": "Armazena dados de cada aluno. O campo 'id' do Aluno corresponde ao 'alunoId' do documento. O acesso de escrita (criar, atualizar, deletar) é restrito a administradores. A leitura pode ser restrita a administradores ou, em um cenário de crachás impressos, talvez acessível indiretamente via PDF gerado. Inclui o campo 'sloganGerado' que pode ser preenchido por IA.",
+          "description": "Armazena dados de cada aluno. Acesso de leitura e escrita é permitido para qualquer usuário autenticado anonimamente.",
           "params": [
             {
               "name": "alunoId",
@@ -91,7 +90,7 @@
           "schema": {
             "$ref": "#/backend/entities/ConfiguracaoCracha"
           },
-          "description": "Armazena configurações globais para a geração de crachás, como a URL da imagem de fundo personalizada. Recomenda-se que 'configuracaoId' seja um valor fixo como 'global'. O acesso de escrita é restrito a administradores. O acesso de leitura pode ser permitido para qualquer usuário autenticado ou até mesmo para não autenticados se a geração de PDF for pública, facilitando a renderização dos crachás.",
+          "description": "Armazena configurações globais para a geração de crachás. Acesso de escrita é restrito a administradores. Acesso de leitura é público.",
           "params": [
             {
               "name": "configuracaoId",
@@ -107,7 +106,7 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Coleção auxiliar para definir quem são os administradores do sistema. A existência de um documento com o UID de um usuário nesta coleção confere a ele a role de administrador. Este documento pode ser vazio ou conter metadados mínimos (e.g., 'createdAt'). Essencial para a Independência de Autorização e DBAC.",
+          "description": "Coleção para definir administradores do sistema. A existência de um documento com o UID de um usuário aqui confere a ele a role de administrador.",
           "params": [
             {
               "name": "uid",
@@ -117,6 +116,6 @@
         }
       }
     ],
-    "reasoning": "A estrutura do Firestore foi projetada para garantir segurança, escalabilidade e debugabilidade, seguindo os princípios de Design Core e as Mandates de Estratégia. A prioridade foi dada à **Independência de Autorização** e à habilidade de suportar **QAPs (Queries are not Filters)**.\n\n**Justificativa de Design:**\n\n1.  **Independência de Autorização (Denormalização):**\n    *   **Alunos:** Todos os documentos de `Aluno` serão armazenados na coleção de nível superior `/alunos/{alunoId}`. A autorização para ler, criar, atualizar ou excluir um aluno não dependerá de dados em documentos pai ou em outras coleções complexas (`get()`). Em vez disso, a permissão será baseada exclusivamente no `uid` do usuário autenticado e na verificação se ele possui a role de administrador. Esta abordagem evita dependências hierárquicas, quebram operações atômicas e são difíceis de depurar em regras de segurança. O campo `id` de `Aluno` será o `alunoId` do documento, facilitando a referência direta.\n    *   **Configuração do Crachá:** A configuração global do crachá será armazenada em `/configuracaoCracha/{configuracaoId}`. Recomenda-se um `configuracaoId` fixo, como 'global', já que se espera apenas uma configuração. A autorização para modificar esta configuração também será independente, dependendo apenas do `uid` do usuário ser um administrador, eliminando a necessidade de `get()` para verificar o contexto de autorização.\n    *   **Roles de Administrador:** Uma coleção auxiliar `/roles_admin/{uid}` será usada para definir explicitamente quem são os administradores. A mera *existência* de um documento com o `uid` do usuário nesta coleção será o único critério para conferir a role de administrador. Esta é uma forma robusta e independente de gerenciar autorização (DBAC), sem a necessidade de custom claims no Auth ou `get()` complexos em regras.\n\n2.  **Suporte a QAPs (Queries are not Filters) e Segregação Estrutural:**\n    *   **Coleções Homogêneas:** As coleções `/alunos` e `/configuracaoCracha` são estruturalmente homogêneas em termos de postura de segurança. Todos os documentos dentro de `/alunos` são gerenciados por administradores; da mesma forma, `/configuracaoCracha` tem acesso de escrita restrito a administradores (e leitura potencialmente pública ou para usuários autenticados). Esta segregação significa que as regras de segurança podem ser simples e diretas, verificando apenas a identidade e role do usuário (`request.auth.uid` e `roles_admin` check), e não precisam filtrar resultados com base em dados *dentro* de cada documento da coleção.\n    *   Quando um administrador executa uma consulta de lista (`list`) em `/alunos`, as regras de segurança podem validar a autorização do administrador uma única vez, permitindo que o Firestore retorne todos os documentos que correspondem à consulta, sem a necessidade de o banco de dados realizar filtragens adicionais complexas para cada documento. Isso garante consultas eficientes e reduz a complexidade das regras. Se houvesse dados públicos e privados misturados, teríamos coleções separadas (ex: `/public_alunos` e `/private_alunos`) ou campos de autorização denormalizados em cada documento, o que não é necessário com uma gestão centralizada por administradores."
+    "reasoning": "A estrutura foi atualizada para usar o Firestore como banco de dados principal. A coleção `/alunos` agora armazena os dados dos estudantes, com regras de segurança que permitem que qualquer usuário autenticado (via autenticação anônima) leia e escreva dados. Isso facilita o uso da aplicação sem a necessidade de um sistema de login complexo, ao mesmo tempo que protege o banco de dados de acesso não autenticado. As outras coleções mantêm suas regras originais para configurações e roles de administrador."
   }
 }

@@ -83,15 +83,15 @@ export default function StudentBadge({ student, background, styles }: StudentBad
           style={photoStyle}
         >
           <Image
-            src={student.photo}
-            alt={`Foto de ${student.name}`}
+            src={student.fotoUrl}
+            alt={`Foto de ${student.nome}`}
             fill
             sizes="30vw"
             className="object-cover"
           />
         </div>
 
-        {renderText(student.name, styles.name)}
+        {renderText(student.nome, styles.name)}
         {renderText(student.turma, styles.turma)}
         
         {styles.customFields.map((field) => {

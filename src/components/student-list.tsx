@@ -58,9 +58,9 @@ export default function StudentList({ students, onUpdate, onDelete, badgeStyle }
     }, {} as Record<string, z.ZodOptional<z.ZodString>>);
 
     return z.object({
-      name: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
+      nome: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
       turma: z.string().min(1, "A turma é obrigatória."),
-      photo: z.any().optional(),
+      fotoUrl: z.any().optional(),
       ...customFieldsSchema,
     });
   }, [badgeStyle.customFields]);
@@ -71,7 +71,7 @@ export default function StudentList({ students, onUpdate, onDelete, badgeStyle }
     resolver: zodResolver(formSchema),
   });
   
-  const photoRef = form.register("photo");
+  const photoRef = form.register("fotoUrl");
 
   const handleEditClick = (student: Student) => {
     setEditingStudent(student);
@@ -80,9 +80,9 @@ export default function StudentList({ students, onUpdate, onDelete, badgeStyle }
         defaultCustomValues[field.id] = student.customData?.[field.id] || '';
     });
     form.reset({
-        name: student.name,
+        nome: student.nome,
         turma: student.turma,
-        photo: undefined,
+        fotoUrl: undefined,
         ...defaultCustomValues,
     });
     setIsDialogOpen(true);
@@ -91,7 +91,7 @@ export default function StudentList({ students, onUpdate, onDelete, badgeStyle }
   const onSubmit: SubmitHandler<FormValues> = (data) => {
     if (!editingStudent) return;
     
-    const { name, turma, photo, ...customDataValues } = data;
+    const { nome, turma, fotoUrl, ...customDataValues } = data;
     const customData = Object.entries(customDataValues).reduce((acc, [key, value]) => {
         if (value) {
             acc[key] = value as string;
@@ -99,18 +99,18 @@ export default function StudentList({ students, onUpdate, onDelete, badgeStyle }
         return acc;
     }, {} as { [key: string]: string });
     
-    const file = data.photo?.[0];
+    const file = data.fotoUrl?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
         const photoDataUrl = e.target?.result as string;
-        onUpdate({ ...editingStudent, name: data.name, turma: data.turma, photo: photoDataUrl, customData });
+        onUpdate({ ...editingStudent, nome: data.nome, turma: data.turma, fotoUrl: photoDataUrl, customData });
         setIsDialogOpen(false);
         setEditingStudent(null);
       };
       reader.readAsDataURL(file);
     } else {
-      onUpdate({ ...editingStudent, name: data.name, turma: data.turma, customData });
+      onUpdate({ ...editingStudent, nome: data.nome, turma: data.turma, customData });
       setIsDialogOpen(false);
       setEditingStudent(null);
     }
@@ -137,11 +137,11 @@ export default function StudentList({ students, onUpdate, onDelete, badgeStyle }
               <TableRow key={student.id}>
                 <TableCell>
                   <Avatar>
-                    <AvatarImage src={student.photo} alt={student.name} />
-                    <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={student.fotoUrl} alt={student.nome} />
+                    <AvatarFallback>{student.nome.charAt(0)}</AvatarFallback>
                   </Avatar>
                 </TableCell>
-                <TableCell className="font-medium">{student.name}</TableCell>
+                <TableCell className="font-medium">{student.nome}</TableCell>
                 <TableCell>{student.turma}</TableCell>
                 <TableCell className="text-right">
                   <Button variant="ghost" size="icon" onClick={() => handleEditClick(student)}>
@@ -188,7 +188,7 @@ export default function StudentList({ students, onUpdate, onDelete, badgeStyle }
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
                     control={form.control}
-                    name="name"
+                    name="nome"
                     render={({ field }) => (
                     <FormItem>
                         <FormLabel>Nome</FormLabel>
@@ -210,7 +210,7 @@ export default function StudentList({ students, onUpdate, onDelete, badgeStyle }
                 />
                 <FormField
                     control={form.control}
-                    name="photo"
+                    name="fotoUrl"
                     render={() => (
                     <FormItem>
                         <FormLabel>Nova Foto (opcional)</FormLabel>

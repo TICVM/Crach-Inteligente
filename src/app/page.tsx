@@ -13,10 +13,13 @@ import StudentList from "@/components/student-list";
 import StudentBadge from "@/components/student-badge";
 import { Button } from "@/components/ui/button";
 import { FileDown, Printer, Loader2 } from "lucide-react";
-import { type BadgeStyleConfig, defaultBadgeStyle, type CustomField } from "@/lib/badge-styles";
+import { type BadgeStyleConfig, defaultBadgeStyle } from "@/lib/badge-styles";
+import { useFirestore, useCollection, useAuth, useMemoFirebase } from "@/firebase";
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { collection, doc } from "firebase/firestore";
+import { signInAnonymously } from "firebase/auth";
 
 export default function Home() {
-  const [students, setStudents] = useState<Student[]>([]);
   const [background, setBackground] = useState<string>("");
   const [badgeStyle, setBadgeStyle] = useState<BadgeStyleConfig>(defaultBadgeStyle);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -24,20 +27,36 @@ export default function Home() {
   const { toast } = useToast();
   const [isMounted, setIsMounted] = useState(false);
 
+  const firestore = useFirestore();
+  const auth = useAuth();
+  
+  const alunosCollection = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'alunos');
+  }, [firestore]);
+
+  const { data: studentsData, isLoading: studentsLoading } = useCollection<Student>(alunosCollection);
+  const students = studentsData || [];
+
   useEffect(() => {
-    // Runs once on client after mount to load data from localStorage
+    // Sign in anonymously if not already signed in
+    if (auth && !auth.currentUser) {
+      signInAnonymously(auth).catch((error) => {
+        console.error("Anonymous sign-in failed", error);
+        toast({
+          variant: "destructive",
+          title: "Falha na autenticação",
+          description: "Não foi possível conectar ao serviço de dados.",
+        });
+      });
+    }
+  }, [auth, toast]);
+
+
+  useEffect(() => {
     const defaultBg = PlaceHolderImages.find(img => img.id === 'default-background');
     if (defaultBg) {
       setBackground(defaultBg.imageUrl);
-    }
-
-    try {
-      const savedStudents = localStorage.getItem('students');
-      if (savedStudents) {
-        setStudents(JSON.parse(savedStudents));
-      }
-    } catch (error) {
-      console.error("Failed to parse students from localStorage", error);
     }
 
     try {
@@ -67,40 +86,40 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    // Saves badgeStyle to localStorage on change, but only after initial mount
     if (isMounted) {
       localStorage.setItem('badgeStyleConfig', JSON.stringify(badgeStyle));
     }
   }, [badgeStyle, isMounted]);
 
-  useEffect(() => {
-    // Saves students to localStorage on change, but only after initial mount
-    if (isMounted) {
-      localStorage.setItem('students', JSON.stringify(students));
-    }
-  }, [students, isMounted]);
-
-
   const addStudent = (student: Omit<Student, "id">) => {
-    setStudents(prev => [...prev, { ...student, id: new Date().toISOString() }]);
+    if (!alunosCollection) return;
+    addDocumentNonBlocking(alunosCollection, student);
     toast({ title: "Sucesso!", description: "Aluno adicionado." });
   };
 
   const updateStudent = (updatedStudent: Student) => {
-    setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
+    if (!firestore || !updatedStudent.id) return;
+    const studentDocRef = doc(firestore, 'alunos', updatedStudent.id);
+    const { id, ...dataToUpdate } = updatedStudent;
+    updateDocumentNonBlocking(studentDocRef, dataToUpdate);
     toast({ title: "Sucesso!", description: "Dados do aluno atualizados." });
   };
 
   const deleteStudent = (studentId: string) => {
-    setStudents(prev => prev.filter(s => s.id !== studentId));
+    if (!firestore) return;
+    const studentDocRef = doc(firestore, 'alunos', studentId);
+    deleteDocumentNonBlocking(studentDocRef);
     toast({ title: "Aluno removido." });
   };
 
   const handleBulkImport = (newStudents: Omit<Student, "id">[]) => {
-    const studentsWithIds = newStudents.map(s => ({ ...s, id: new Date().toISOString() + Math.random() }));
-    setStudents(prev => [...prev, ...studentsWithIds]);
-    toast({ title: "Sucesso!", description: `${newStudents.length} alunos importados.` });
+     if (!alunosCollection) return;
+     newStudents.forEach(student => {
+        addDocumentNonBlocking(alunosCollection, student);
+     });
+     toast({ title: "Sucesso!", description: `${newStudents.length} alunos importados.` });
   };
+
 
   const handlePrint = () => {
     if (students.length === 0) {
@@ -166,7 +185,7 @@ export default function Home() {
 
             <div className="bg-card p-6 rounded-lg shadow-sm no-print">
                 <h2 className="text-2xl font-bold mb-4 text-primary">Alunos Cadastrados</h2>
-                <StudentList students={students} onUpdate={updateStudent} onDelete={deleteStudent} badgeStyle={badgeStyle}/>
+                {studentsLoading ? <Loader2 className="animate-spin mx-auto"/> : <StudentList students={students} onUpdate={updateStudent} onDelete={deleteStudent} badgeStyle={badgeStyle}/>}
             </div>
 
             <div className="bg-card p-6 rounded-lg shadow-sm no-print">

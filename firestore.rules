@@ -72,19 +72,14 @@ service cloud.firestore {
     // -------------------------------------------------------------------------
 
     /**
-     * @description Secures the 'alunos' collection, which contains student data.
-     *              Only administrators are allowed to read or write this information.
+     * @description Secures the 'alunos' collection. For this app, any signed-in user can manage student data.
+     *              This allows any user of the app to add, edit, and delete students.
      * @path        /alunos/{alunoId}
-     * @allow       (create) An admin creates a new student record: `create /alunos/student123`
-     * @deny        (list) A non-admin user attempts to list all students: `list /alunos`
-     * @principle   Enforces a strict admin-only access model for sensitive data.
+     * @allow       (read, write) Any authenticated user can manage student data.
+     * @principle   Open access for authenticated users to facilitate easy collaboration in this specific tool.
      */
     match /alunos/{alunoId} {
-      allow get: if isAdmin();
-      allow list: if isAdmin();
-      allow create: if isAdmin() && request.resource.data.id == alunoId;
-      allow update: if isAdmin() && resource != null && request.resource.data.id == resource.data.id;
-      allow delete: if isAdmin() && resource != null;
+      allow read, write: if isSignedIn();
     }
 
     /**
