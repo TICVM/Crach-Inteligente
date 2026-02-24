@@ -18,6 +18,10 @@ export interface TextStyle extends BaseStyle {
 
 export interface PhotoStyle extends BaseStyle {
   borderRadius: number;
+  hasBorder: boolean;
+  borderWidth: number;
+  borderColor: string;
+  borderOpacity: number;
 }
 
 export interface CustomField extends TextStyle {
@@ -35,37 +39,41 @@ export interface BadgeStyleConfig {
 // These values are in pixels, based on a 1063x768 design
 export const defaultBadgeStyle: BadgeStyleConfig = {
   photo: {
-    x: 38,
+    x: 376,
     y: 195,
     width: 292,
     height: 376,
     borderRadius: 20,
+    hasBorder: true,
+    borderWidth: 6,
+    borderColor: '#ffffff',
+    borderOpacity: 1,
   },
   name: {
-    x: 378,
-    y: 334,
-    width: 630,
-    height: 50,
-    fontSize: 32,
-    color: '#ffffff',
+    x: 380,
+    y: 600,
+    width: 640,
+    height: 60,
+    fontSize: 42,
+    color: '#2a4d7a',
     fontWeight: 'bold',
     textAlign: 'left',
-    backgroundColor: '#000000',
-    backgroundOpacity: 0,
-    backgroundRadius: 6,
+    backgroundColor: '#ffffff',
+    backgroundOpacity: 0.85,
+    backgroundRadius: 10,
   },
   turma: {
-    x: 378,
-    y: 420,
-    width: 298,
+    x: 380,
+    y: 670,
+    width: 280,
     height: 50,
-    fontSize: 32,
-    color: '#ffffff',
+    fontSize: 36,
+    color: '#2a4d7a',
     fontWeight: 'bold',
     textAlign: 'left',
-    backgroundColor: '#000000',
-    backgroundOpacity: 0,
-    backgroundRadius: 6,
+    backgroundColor: '#ffffff',
+    backgroundOpacity: 0.85,
+    backgroundRadius: 10,
   },
   customFields: [],
 };

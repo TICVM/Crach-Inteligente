@@ -50,6 +50,25 @@ export default function StudentBadge({ student, background, styles }: StudentBad
     );
   };
 
+  const photoStyle: React.CSSProperties = {
+    left: `${(styles.photo.x / BADGE_BASE_WIDTH) * 100}%`,
+    top: `${(styles.photo.y / BADGE_BASE_HEIGHT) * 100}%`,
+    width: `${(styles.photo.width / BADGE_BASE_WIDTH) * 100}%`,
+    height: `${(styles.photo.height / BADGE_BASE_HEIGHT) * 100}%`,
+    borderRadius: `${styles.photo.borderRadius}px`,
+    boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+    boxSizing: 'border-box',
+  };
+
+  if (styles.photo.hasBorder && styles.photo.borderWidth > 0) {
+    const borderColorRgb = hexToRgb(styles.photo.borderColor);
+    const borderColorRgba = borderColorRgb
+      ? `rgba(${borderColorRgb.r}, ${borderColorRgb.g}, ${borderColorRgb.b}, ${styles.photo.borderOpacity})`
+      : 'transparent';
+    
+    photoStyle.border = `${styles.photo.borderWidth}px solid ${borderColorRgba}`;
+  }
+
   return (
     <div
       className="relative aspect-[1063/768] w-full overflow-hidden rounded-lg shadow-md bg-card bg-cover bg-center"
@@ -61,14 +80,7 @@ export default function StudentBadge({ student, background, styles }: StudentBad
         {/* Student Photo */}
         <div
           className="absolute overflow-hidden"
-          style={{
-            left: `${(styles.photo.x / BADGE_BASE_WIDTH) * 100}%`,
-            top: `${(styles.photo.y / BADGE_BASE_HEIGHT) * 100}%`,
-            width: `${(styles.photo.width / BADGE_BASE_WIDTH) * 100}%`,
-            height: `${(styles.photo.height / BADGE_BASE_HEIGHT) * 100}%`,
-            borderRadius: `${styles.photo.borderRadius}px`,
-            boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-          }}
+          style={photoStyle}
         >
           <Image
             src={student.photo}

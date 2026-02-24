@@ -12,6 +12,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Image as ImageIcon, Wand2, Type, Trash2, PlusCircle } from 'lucide-react';
 import NextImage from 'next/image';
 import { type BadgeStyleConfig, type CustomField, type TextStyle, type PhotoStyle } from '@/lib/badge-styles';
+import { Switch } from '@/components/ui/switch';
 
 interface CustomizeCardProps {
   currentBackground: string;
@@ -162,6 +163,22 @@ export default function CustomizeCard({ currentBackground, onSetBackground, badg
               <StyleInput label="Largura" value={badgeStyle.photo.width} onChange={(e) => handleStyleChange('photo', 'width', parseInt(e.target.value))} />
               <StyleInput label="Altura" value={badgeStyle.photo.height} onChange={(e) => handleStyleChange('photo', 'height', parseInt(e.target.value))} />
               <StyleInput label="Arredondamento" value={badgeStyle.photo.borderRadius} onChange={(e) => handleStyleChange('photo', 'borderRadius', parseInt(e.target.value))} />
+              <div className="border-t pt-3 mt-3 space-y-3">
+                <div className="grid grid-cols-2 items-center gap-2">
+                  <Label className="text-xs">Borda</Label>
+                  <Switch
+                    checked={badgeStyle.photo.hasBorder}
+                    onCheckedChange={(checked) => handleStyleChange('photo', 'hasBorder', checked)}
+                  />
+                </div>
+                {badgeStyle.photo.hasBorder && (
+                  <>
+                    <StyleInput label="Largura da Borda" value={badgeStyle.photo.borderWidth} onChange={(e) => handleStyleChange('photo', 'borderWidth', parseInt(e.target.value))} />
+                    <ColorInput label="Cor da Borda" value={badgeStyle.photo.borderColor} onChange={(e) => handleStyleChange('photo', 'borderColor', e.target.value)} />
+                    <OpacitySlider label="Opacidade da Borda" value={badgeStyle.photo.borderOpacity} onChange={(val) => handleStyleChange('photo', 'borderOpacity', val[0])} />
+                  </>
+                )}
+              </div>
             </AccordionContent>
           </AccordionItem>
 

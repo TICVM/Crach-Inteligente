@@ -111,7 +111,6 @@ export const generatePdf = async (students: Student[], backgroundUrl: string, st
 
         // 2. Add Photo
         const studentPhotoDataUrl = student.photo.startsWith('data:') ? student.photo : await toDataURL(student.photo);
-        // jsPDF does not support clipping with rounded corners for images easily. We'll add a rectangular image.
         pdf.addImage(
             studentPhotoDataUrl, 'PNG', 
             x + styles.photo.x * pxToMmX, 
@@ -119,6 +118,29 @@ export const generatePdf = async (students: Student[], backgroundUrl: string, st
             styles.photo.width * pxToMmX, 
             styles.photo.height * pxToMmY
         );
+
+        // Draw border on top of the image
+        if (styles.photo.hasBorder && styles.photo.borderWidth > 0) {
+            const borderColorRgb = hexToRgb(styles.photo.borderColor);
+            if (borderColorRgb) {
+                // PDF stroke opacity is not well-supported, so it will be solid.
+                pdf.setDrawColor(borderColorRgb.r, borderColorRgb.g, borderColorRgb.b);
+                const lineWidthMm = styles.photo.borderWidth * pxToMmX;
+                pdf.setLineWidth(lineWidthMm);
+                
+                const radius = styles.photo.borderRadius * pxToMmX;
+                
+                pdf.roundedRect(
+                    x + styles.photo.x * pxToMmX, 
+                    y + styles.photo.y * pxToMmY, 
+                    styles.photo.width * pxToMmX, 
+                    styles.photo.height * pxToMmY,
+                    radius,
+                    radius,
+                    'S' // S for stroke
+                );
+            }
+        }
 
         // 3. Add Name, Turma and Custom Fields
         renderTextOnPdf(student.name, styles.name, x, y);
