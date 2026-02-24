@@ -15,7 +15,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
@@ -80,11 +79,13 @@ export default function StudentList({ students, onUpdate, onDelete }: StudentLis
         const photoDataUrl = e.target?.result as string;
         onUpdate({ ...editingStudent, name: data.name, turma: data.turma, photo: photoDataUrl });
         setIsDialogOpen(false);
+        setEditingStudent(null);
       };
       reader.readAsDataURL(file);
     } else {
       onUpdate({ ...editingStudent, name: data.name, turma: data.turma });
       setIsDialogOpen(false);
+      setEditingStudent(null);
     }
   };
 
@@ -116,16 +117,9 @@ export default function StudentList({ students, onUpdate, onDelete }: StudentLis
                 <TableCell className="font-medium">{student.name}</TableCell>
                 <TableCell>{student.turma}</TableCell>
                 <TableCell className="text-right">
-                  <Dialog open={isDialogOpen && editingStudent?.id === student.id} onOpenChange={(open) => {
-                      if(!open) setEditingStudent(null);
-                      setIsDialogOpen(open);
-                  }}>
-                    <DialogTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(student)}>
-                            <Pencil className="h-4 w-4" />
-                        </Button>
-                    </DialogTrigger>
-                  </Dialog>
+                  <Button variant="ghost" size="icon" onClick={() => handleEditClick(student)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
@@ -152,56 +146,63 @@ export default function StudentList({ students, onUpdate, onDelete }: StudentLis
         </Table>
       </div>
 
-       {editingStudent && (
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Aluno</DialogTitle>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="turma"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Turma</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="photo"
-                render={() => (
-                  <FormItem>
-                    <FormLabel>Nova Foto (opcional)</FormLabel>
-                    <FormControl><Input type="file" accept="image/*" {...photoRef} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button type="button" variant="secondary">Cancelar</Button>
-                </DialogClose>
-                <Button type="submit">Salvar Alterações</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-       )}
+       <Dialog open={isDialogOpen} onOpenChange={(open) => {
+         if (!open) {
+           setEditingStudent(null);
+         }
+         setIsDialogOpen(open);
+       }}>
+        {editingStudent && (
+            <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Editar Aluno</DialogTitle>
+            </DialogHeader>
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Nome</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="turma"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Turma</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="photo"
+                    render={() => (
+                    <FormItem>
+                        <FormLabel>Nova Foto (opcional)</FormLabel>
+                        <FormControl><Input type="file" accept="image/*" {...photoRef} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <DialogFooter>
+                    <DialogClose asChild>
+                    <Button type="button" variant="secondary">Cancelar</Button>
+                    </DialogClose>
+                    <Button type="submit">Salvar Alterações</Button>
+                </DialogFooter>
+                </form>
+            </Form>
+            </DialogContent>
+        )}
+       </Dialog>
     </>
   );
 }
