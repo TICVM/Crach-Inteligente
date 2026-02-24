@@ -18,7 +18,7 @@ import { FileDown, Printer, Loader2 } from "lucide-react";
 export default function Home() {
   const [students, setStudents] = useState<Student[]>([]);
   const [background, setBackground] = useState<string>("");
-  const [slogan, setSlogan] = useState<string>("Sua jornada de aprendizado começa agora!");
+  const [slogan, setSlogan] = useState<string>("");
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPdfLoading, setIsPdfLoading] = useState(false);
   const { toast } = useToast();
