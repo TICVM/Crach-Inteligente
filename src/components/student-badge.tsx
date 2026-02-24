@@ -8,7 +8,7 @@ interface StudentBadgeProps {
 
 export default function StudentBadge({ student, background }: StudentBadgeProps) {
   return (
-    <div className="relative aspect-[400/289] w-full overflow-hidden rounded-lg shadow-md bg-card">
+    <div className="relative aspect-[1000/723] w-full overflow-hidden rounded-lg shadow-md bg-card">
       {/* Background Image */}
       <Image
         src={background}
@@ -17,7 +17,7 @@ export default function StudentBadge({ student, background }: StudentBadgeProps)
         sizes="100%"
         className="object-cover"
         priority
-        data-ai-hint="abstract blue"
+        data-ai-hint="school badge"
       />
 
       {/* Content Wrapper */}
@@ -26,10 +26,10 @@ export default function StudentBadge({ student, background }: StudentBadgeProps)
         <div
           className="absolute overflow-hidden bg-white shadow-lg"
           style={{
-            left: '3.5%', // 14px / 400px
-            top: '37.02%', // 107px / 289px
-            width: '27.5%', // 110px / 400px
-            height: '49.13%', // 142px / 289px
+            left: '8.5%',
+            top: '47%',
+            width: '25%',
+            height: '42%',
             borderRadius: '8px',
             border: '2px solid white',
           }}
@@ -47,15 +47,12 @@ export default function StudentBadge({ student, background }: StudentBadgeProps)
         <div
           className="absolute flex items-center px-2 font-bold text-left truncate"
           style={{
-            left: '34%', // 136px / 400px
-            top: '51.9%', // 150px / 289px
-            width: '59.5%', // 238px / 400px
-            height: '9.68%', // 28px / 289px
-            fontSize: 'clamp(0.8rem, 2.5vw, 1rem)',
-            color: '#2a4d7a',
-            backgroundColor: 'rgba(255, 255, 255, 0.7)',
-            borderRadius: '4px',
-            textShadow: '1px 1px 2px #fff',
+            left: '48%',
+            top: '56.5%',
+            width: '45%',
+            height: '7%',
+            fontSize: 'clamp(0.8rem, 2.5vw, 1.1rem)',
+            color: 'white',
           }}
         >
           {student.name}
@@ -65,14 +62,12 @@ export default function StudentBadge({ student, background }: StudentBadgeProps)
         <div
           className="absolute flex items-center px-2 font-bold text-left truncate"
           style={{
-            left: '34%', // 136px / 400px
-            top: '69.2%', // 200px / 289px
-            width: '45%', // 180px / 400px
-            height: '8.3%', // 24px / 289px
-            fontSize: 'clamp(0.7rem, 2.2vw, 0.9rem)',
-            color: '#2a4d7a',
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            borderRadius: '4px',
+            left: '48%',
+            top: '68.5%',
+            width: '45%',
+            height: '7%',
+            fontSize: 'clamp(0.8rem, 2.5vw, 1.1rem)',
+            color: 'white',
           }}
         >
           {student.turma}
