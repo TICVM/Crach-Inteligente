@@ -13,7 +13,7 @@ import StudentList from "@/components/student-list";
 import StudentBadge from "@/components/student-badge";
 import { Button } from "@/components/ui/button";
 import { FileDown, Printer, Loader2 } from "lucide-react";
-import { type BadgeStyleConfig, defaultBadgeStyle } from "@/lib/badge-styles";
+import { type BadgeStyleConfig, defaultBadgeStyle, type CustomField } from "@/lib/badge-styles";
 
 export default function Home() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -29,6 +29,36 @@ export default function Home() {
         setBackground(defaultBg.imageUrl);
     }
   }, []);
+
+  useEffect(() => {
+    const savedStyle = localStorage.getItem('badgeStyleConfig');
+    if (savedStyle) {
+      try {
+        const parsed = JSON.parse(savedStyle);
+        const mergedStyle = {
+          ...defaultBadgeStyle,
+          ...parsed,
+          photo: { ...defaultBadgeStyle.photo, ...parsed.photo },
+          name: { ...defaultBadgeStyle.name, ...parsed.name },
+          turma: { ...defaultBadgeStyle.turma, ...parsed.turma },
+          customFields: parsed.customFields?.map((field: any) => ({
+            ...defaultBadgeStyle.name, // base styles
+            id: '',
+            label: '',
+            ...field,
+          })) || [],
+        };
+        setBadgeStyle(mergedStyle);
+      } catch (error) {
+        console.error("Failed to parse badge style from localStorage", error);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('badgeStyleConfig', JSON.stringify(badgeStyle));
+  }, [badgeStyle]);
+
 
   const addStudent = (student: Omit<Student, "id">) => {
     setStudents(prev => [...prev, { ...student, id: new Date().toISOString() }]);
@@ -88,7 +118,7 @@ export default function Home() {
       <main className="container mx-auto p-4 md:p-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1 flex flex-col gap-8 no-print">
-            <AddStudentCard onAddStudent={addStudent} />
+            <AddStudentCard onAddStudent={addStudent} badgeStyle={badgeStyle} />
             <BulkImportCard onImport={handleBulkImport} />
             <CustomizeCard
               currentBackground={background}
@@ -115,7 +145,7 @@ export default function Home() {
 
             <div className="bg-card p-6 rounded-lg shadow-sm no-print">
                 <h2 className="text-2xl font-bold mb-4 text-primary">Alunos Cadastrados</h2>
-                <StudentList students={students} onUpdate={updateStudent} onDelete={deleteStudent} />
+                <StudentList students={students} onUpdate={updateStudent} onDelete={deleteStudent} badgeStyle={badgeStyle}/>
             </div>
 
             <div className="bg-card p-6 rounded-lg shadow-sm no-print">

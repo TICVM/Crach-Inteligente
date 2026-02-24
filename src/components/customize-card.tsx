@@ -83,7 +83,7 @@ export default function CustomizeCard({ currentBackground, onSetBackground, badg
   const addCustomField = () => {
       const newField: CustomField = {
           id: `custom-${Date.now()}`,
-          text: 'Novo Campo',
+          label: 'Novo Campo',
           x: 50,
           y: 600,
           width: 400,
@@ -116,6 +116,7 @@ export default function CustomizeCard({ currentBackground, onSetBackground, badg
         <StyleInput label="Posição X" value={badgeStyle[field].x} onChange={(e) => handleStyleChange(field, 'x', parseInt(e.target.value))} />
         <StyleInput label="Posição Y" value={badgeStyle[field].y} onChange={(e) => handleStyleChange(field, 'y', parseInt(e.target.value))} />
         <StyleInput label="Largura" value={badgeStyle[field].width} onChange={(e) => handleStyleChange(field, 'width', parseInt(e.target.value))} />
+        <StyleInput label="Altura" value={badgeStyle[field].height} onChange={(e) => handleStyleChange(field, 'height', parseInt(e.target.value))} />
         <StyleInput label="Tam. Fonte" value={badgeStyle[field].fontSize} onChange={(e) => handleStyleChange(field, 'fontSize', parseInt(e.target.value))} />
         <ColorInput label="Cor da Fonte" value={badgeStyle[field].color} onChange={(e) => handleStyleChange(field, 'color', e.target.value)} />
         <ColorInput label="Cor do Fundo" value={badgeStyle[field].backgroundColor} onChange={(e) => handleStyleChange(field, 'backgroundColor', e.target.value)} />
@@ -175,7 +176,7 @@ export default function CustomizeCard({ currentBackground, onSetBackground, badg
                    <AccordionItem value={`custom-${index}`} >
                     <AccordionTrigger className="text-sm py-2">
                         <div className="flex justify-between w-full items-center pr-2">
-                            <span className="truncate">{field.text || "Novo Campo"}</span>
+                            <span className="truncate">{field.label || "Novo Campo"}</span>
                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); removeCustomField(field.id); }}>
                                 <Trash2 size={16}/>
                             </Button>
@@ -183,12 +184,13 @@ export default function CustomizeCard({ currentBackground, onSetBackground, badg
                     </AccordionTrigger>
                     <AccordionContent className="space-y-3 p-1 border-t mt-2">
                          <div className="grid grid-cols-2 items-center gap-2">
-                            <Label className="text-xs">Texto</Label>
-                            <Input value={field.text} onChange={(e) => handleCustomFieldChange(field.id, 'text', e.target.value)} className="h-8"/>
+                            <Label className="text-xs">Rótulo</Label>
+                            <Input value={field.label} onChange={(e) => handleCustomFieldChange(field.id, 'label', e.target.value)} className="h-8"/>
                         </div>
                         <StyleInput label="Posição X" value={field.x} onChange={(e) => handleCustomFieldChange(field.id, 'x', parseInt(e.target.value))} />
                         <StyleInput label="Posição Y" value={field.y} onChange={(e) => handleCustomFieldChange(field.id, 'y', parseInt(e.target.value))} />
                         <StyleInput label="Largura" value={field.width} onChange={(e) => handleCustomFieldChange(field.id, 'width', parseInt(e.target.value))} />
+                        <StyleInput label="Altura" value={field.height} onChange={(e) => handleCustomFieldChange(field.id, 'height', parseInt(e.target.value))} />
                         <StyleInput label="Tam. Fonte" value={field.fontSize} onChange={(e) => handleCustomFieldChange(field.id, 'fontSize', parseInt(e.target.value))} />
                         <ColorInput label="Cor da Fonte" value={field.color} onChange={(e) => handleCustomFieldChange(field.id, 'color', e.target.value)} />
                         <ColorInput label="Cor do Fundo" value={field.backgroundColor} onChange={(e) => handleCustomFieldChange(field.id, 'backgroundColor', e.target.value)} />

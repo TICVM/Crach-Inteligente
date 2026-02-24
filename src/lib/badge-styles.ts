@@ -22,7 +22,7 @@ export interface PhotoStyle extends BaseStyle {
 
 export interface CustomField extends TextStyle {
   id: string;
-  text: string;
+  label: string;
 }
 
 export interface BadgeStyleConfig {

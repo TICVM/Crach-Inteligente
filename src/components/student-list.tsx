@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { type Student } from '@/lib/types';
+import { type BadgeStyleConfig } from '@/lib/badge-styles';
 import {
   Table,
   TableBody,
@@ -43,19 +44,28 @@ interface StudentListProps {
   students: Student[];
   onUpdate: (student: Student) => void;
   onDelete: (studentId: string) => void;
+  badgeStyle: BadgeStyleConfig;
 }
 
-const formSchema = z.object({
-  name: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
-  turma: z.string().min(1, "A turma é obrigatória."),
-  photo: z.any().optional(),
-});
-
-type FormValues = z.infer<typeof formSchema>;
-
-export default function StudentList({ students, onUpdate, onDelete }: StudentListProps) {
+export default function StudentList({ students, onUpdate, onDelete, badgeStyle }: StudentListProps) {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const formSchema = React.useMemo(() => {
+    const customFieldsSchema = badgeStyle.customFields.reduce((acc, field) => {
+      acc[field.id] = z.string().optional();
+      return acc;
+    }, {} as Record<string, z.ZodOptional<z.ZodString>>);
+
+    return z.object({
+      name: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
+      turma: z.string().min(1, "A turma é obrigatória."),
+      photo: z.any().optional(),
+      ...customFieldsSchema,
+    });
+  }, [badgeStyle.customFields]);
+
+  type FormValues = z.infer<typeof formSchema>;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -65,25 +75,42 @@ export default function StudentList({ students, onUpdate, onDelete }: StudentLis
 
   const handleEditClick = (student: Student) => {
     setEditingStudent(student);
-    form.reset({ name: student.name, turma: student.turma, photo: undefined });
+    const defaultCustomValues: {[key: string]: string} = {};
+    badgeStyle.customFields.forEach(field => {
+        defaultCustomValues[field.id] = student.customData?.[field.id] || '';
+    });
+    form.reset({
+        name: student.name,
+        turma: student.turma,
+        photo: undefined,
+        ...defaultCustomValues,
+    });
     setIsDialogOpen(true);
   };
 
   const onSubmit: SubmitHandler<FormValues> = (data) => {
     if (!editingStudent) return;
     
+    const { name, turma, photo, ...customDataValues } = data;
+    const customData = Object.entries(customDataValues).reduce((acc, [key, value]) => {
+        if (value) {
+            acc[key] = value as string;
+        }
+        return acc;
+    }, {} as { [key: string]: string });
+    
     const file = data.photo?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
         const photoDataUrl = e.target?.result as string;
-        onUpdate({ ...editingStudent, name: data.name, turma: data.turma, photo: photoDataUrl });
+        onUpdate({ ...editingStudent, name: data.name, turma: data.turma, photo: photoDataUrl, customData });
         setIsDialogOpen(false);
         setEditingStudent(null);
       };
       reader.readAsDataURL(file);
     } else {
-      onUpdate({ ...editingStudent, name: data.name, turma: data.turma });
+      onUpdate({ ...editingStudent, name: data.name, turma: data.turma, customData });
       setIsDialogOpen(false);
       setEditingStudent(null);
     }
@@ -192,6 +219,22 @@ export default function StudentList({ students, onUpdate, onDelete }: StudentLis
                     </FormItem>
                     )}
                 />
+                {badgeStyle.customFields.map((field) => (
+                    <FormField
+                        key={field.id}
+                        control={form.control}
+                        name={field.id}
+                        render={({ field: formField }) => (
+                        <FormItem>
+                            <FormLabel>{field.label}</FormLabel>
+                            <FormControl>
+                            <Input placeholder={`Digite o ${field.label.toLowerCase()}`} {...formField} value={formField.value || ''}/>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                ))}
                 <DialogFooter>
                     <DialogClose asChild>
                     <Button type="button" variant="secondary">Cancelar</Button>

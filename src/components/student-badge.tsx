@@ -1,5 +1,5 @@
 import { type Student } from "@/lib/types";
-import { type BadgeStyleConfig } from "@/lib/badge-styles";
+import { type BadgeStyleConfig, type TextStyle } from "@/lib/badge-styles";
 import Image from "next/image";
 
 interface StudentBadgeProps {
@@ -24,7 +24,7 @@ function hexToRgb(hex: string) {
 
 export default function StudentBadge({ student, background, styles }: StudentBadgeProps) {
   
-  const renderText = (text: string, style: typeof styles.name) => {
+  const renderText = (text: string, style: TextStyle) => {
     const rgb = hexToRgb(style.backgroundColor);
     const rgba = rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${style.backgroundOpacity})` : 'transparent';
     
@@ -82,11 +82,17 @@ export default function StudentBadge({ student, background, styles }: StudentBad
         {renderText(student.name, styles.name)}
         {renderText(student.turma, styles.turma)}
         
-        {styles.customFields.map((field) => (
-           <div key={field.id}>
-             {renderText(field.text, field)}
-           </div>
-        ))}
+        {styles.customFields.map((field) => {
+            const value = student.customData?.[field.id];
+            if (!value) {
+                return null;
+            }
+            return (
+                <div key={field.id}>
+                    {renderText(value, field)}
+                </div>
+            );
+        })}
       </div>
     </div>
   );

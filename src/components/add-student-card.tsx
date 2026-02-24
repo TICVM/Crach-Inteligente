@@ -11,21 +11,33 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { UserPlus, Loader2 } from "lucide-react";
 import React from "react";
+import { type BadgeStyleConfig } from "@/lib/badge-styles";
 
-const formSchema = z.object({
-  name: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
-  turma: z.string().min(1, "A turma é obrigatória."),
-  photo: z.any().refine(fileList => fileList.length === 1, "A foto é obrigatória."),
-});
-
-type FormValues = z.infer<typeof formSchema>;
 
 interface AddStudentCardProps {
   onAddStudent: (student: Omit<Student, "id">) => void;
+  badgeStyle: BadgeStyleConfig;
 }
 
-export default function AddStudentCard({ onAddStudent }: AddStudentCardProps) {
+export default function AddStudentCard({ onAddStudent, badgeStyle }: AddStudentCardProps) {
   const { toast } = useToast();
+
+  const formSchema = React.useMemo(() => {
+    const customFieldsSchema = badgeStyle.customFields.reduce((acc, field) => {
+      acc[field.id] = z.string().optional();
+      return acc;
+    }, {} as Record<string, z.ZodOptional<z.ZodString>>);
+
+    return z.object({
+      name: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
+      turma: z.string().min(1, "A turma é obrigatória."),
+      photo: z.any().refine(fileList => fileList && fileList.length === 1, "A foto é obrigatória."),
+      ...customFieldsSchema,
+    });
+  }, [badgeStyle.customFields]);
+  
+  type FormValues = z.infer<typeof formSchema>;
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -38,13 +50,32 @@ export default function AddStudentCard({ onAddStudent }: AddStudentCardProps) {
   const photoRef = form.register("photo");
 
   const onSubmit: SubmitHandler<FormValues> = (data) => {
-    const file = data.photo[0];
+    const file = data.photo?.[0];
     if (file) {
+      const { name, turma, photo, ...customDataValues } = data;
+      
+      const customData = Object.entries(customDataValues).reduce((acc, [key, value]) => {
+          if (value) {
+            acc[key] = value as string;
+          }
+          return acc;
+      }, {} as { [key: string]: string });
+
       const reader = new FileReader();
       reader.onload = (e) => {
         const photoDataUrl = e.target?.result as string;
-        onAddStudent({ name: data.name, turma: data.turma, photo: photoDataUrl });
+        onAddStudent({ name, turma, photo: photoDataUrl, customData });
         form.reset();
+        // Manually reset custom fields as well
+        const defaultCustomValues: {[key: string]: string} = {};
+        badgeStyle.customFields.forEach(f => defaultCustomValues[f.id] = '');
+        form.reset({
+            name: "",
+            turma: "",
+            photo: undefined,
+            ...defaultCustomValues,
+        });
+
       };
       reader.onerror = () => {
         toast({
@@ -107,6 +138,22 @@ export default function AddStudentCard({ onAddStudent }: AddStudentCardProps) {
                 </FormItem>
               )}
             />
+            {badgeStyle.customFields.map((field) => (
+                <FormField
+                key={field.id}
+                control={form.control}
+                name={field.id}
+                render={({ field: formField }) => (
+                    <FormItem>
+                    <FormLabel>{field.label}</FormLabel>
+                    <FormControl>
+                        <Input placeholder={`Digite o ${field.label.toLowerCase()}`} {...formField} value={formField.value || ''} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            ))}
             <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "Adicionar Aluno"}
             </Button>

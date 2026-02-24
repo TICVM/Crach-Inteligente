@@ -3,4 +3,5 @@ export interface Student {
   name: string;
   turma: string;
   photo: string; // Base64 data URL
+  customData?: { [key: string]: string };
 }

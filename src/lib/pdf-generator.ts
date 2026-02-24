@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import { type Student } from './types';
-import { type BadgeStyleConfig } from './badge-styles';
+import { type BadgeStyleConfig, type TextStyle } from './badge-styles';
 
 const BADGE_BASE_WIDTH = 1063;
 const BADGE_BASE_HEIGHT = 768;
@@ -55,7 +55,7 @@ export const generatePdf = async (students: Student[], backgroundUrl: string, st
     const pxToMmX = badgeWidth / BADGE_BASE_WIDTH;
     const pxToMmY = badgeHeight / BADGE_BASE_HEIGHT;
     
-    const renderTextOnPdf = (text: string, style: typeof styles.name, x: number, y: number) => {
+    const renderTextOnPdf = (text: string, style: TextStyle, x: number, y: number) => {
         // Text Background
         const rgb = hexToRgb(style.backgroundColor);
         if (rgb && style.backgroundOpacity > 0) {
@@ -124,7 +124,10 @@ export const generatePdf = async (students: Student[], backgroundUrl: string, st
         renderTextOnPdf(student.name, styles.name, x, y);
         renderTextOnPdf(student.turma, styles.turma, x, y);
         styles.customFields.forEach(field => {
-            renderTextOnPdf(field.text, field, x, y);
+            const value = student.customData?.[field.id];
+            if (value) {
+                renderTextOnPdf(value, field, x, y);
+            }
         });
     }
     
