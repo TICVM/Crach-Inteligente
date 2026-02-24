@@ -13,10 +13,12 @@ import StudentList from "@/components/student-list";
 import StudentBadge from "@/components/student-badge";
 import { Button } from "@/components/ui/button";
 import { FileDown, Printer, Loader2 } from "lucide-react";
+import { type BadgeStyleConfig, defaultBadgeStyle } from "@/lib/badge-styles";
 
 export default function Home() {
   const [students, setStudents] = useState<Student[]>([]);
   const [background, setBackground] = useState<string>("");
+  const [badgeStyle, setBadgeStyle] = useState<BadgeStyleConfig>(defaultBadgeStyle);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPdfLoading, setIsPdfLoading] = useState(false);
   const { toast } = useToast();
@@ -70,7 +72,7 @@ export default function Home() {
     }
     setIsPdfLoading(true);
     try {
-      await generatePdf(students, background);
+      await generatePdf(students, background, badgeStyle);
     } catch (error) {
       console.error("PDF Generation Error:", error);
       toast({ variant: "destructive", title: "Erro", description: "Ocorreu um erro ao gerar o PDF." });
@@ -91,6 +93,8 @@ export default function Home() {
             <CustomizeCard
               currentBackground={background}
               onSetBackground={setBackground}
+              badgeStyle={badgeStyle}
+              onStyleChange={setBadgeStyle}
             />
           </div>
 
@@ -119,7 +123,7 @@ export default function Home() {
                 {students.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {students.map((student) => (
-                      <StudentBadge key={student.id} student={student} background={background} />
+                      <StudentBadge key={student.id} student={student} background={background} styles={badgeStyle} />
                     ))}
                   </div>
                 ) : (
@@ -134,7 +138,7 @@ export default function Home() {
            <div className="print-container">
             {students.map((student) => (
                 <div key={`print-${student.id}`} className="print-item">
-                    <StudentBadge student={student} background={background} />
+                    <StudentBadge student={student} background={background} styles={badgeStyle} />
                 </div>
             ))}
            </div>

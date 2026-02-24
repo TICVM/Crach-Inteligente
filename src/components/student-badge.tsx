@@ -1,12 +1,55 @@
 import { type Student } from "@/lib/types";
+import { type BadgeStyleConfig } from "@/lib/badge-styles";
 import Image from "next/image";
 
 interface StudentBadgeProps {
   student: Student;
   background: string;
+  styles: BadgeStyleConfig;
 }
 
-export default function StudentBadge({ student, background }: StudentBadgeProps) {
+const BADGE_BASE_WIDTH = 1063;
+const BADGE_BASE_HEIGHT = 768;
+
+function hexToRgb(hex: string) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+      }
+    : null;
+}
+
+export default function StudentBadge({ student, background, styles }: StudentBadgeProps) {
+  
+  const renderText = (text: string, style: typeof styles.name) => {
+    const rgb = hexToRgb(style.backgroundColor);
+    const rgba = rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${style.backgroundOpacity})` : 'transparent';
+    
+    return (
+      <div
+        className="absolute flex items-center"
+        style={{
+          left: `${(style.x / BADGE_BASE_WIDTH) * 100}%`,
+          top: `${(style.y / BADGE_BASE_HEIGHT) * 100}%`,
+          width: `${(style.width / BADGE_BASE_WIDTH) * 100}%`,
+          height: `${(style.height / BADGE_BASE_HEIGHT) * 100}%`,
+          fontSize: `clamp(0.5rem, ${(style.fontSize / BADGE_BASE_WIDTH) * 100}vw, 2rem)`,
+          color: style.color,
+          fontWeight: style.fontWeight,
+          textAlign: style.textAlign,
+          backgroundColor: rgba,
+          borderRadius: `${style.backgroundRadius}px`,
+          padding: '0 0.5em'
+        }}
+      >
+        <span className="truncate w-full">{text}</span>
+      </div>
+    );
+  };
+
   return (
     <div
       className="relative aspect-[1063/768] w-full overflow-hidden rounded-lg shadow-md bg-card bg-cover bg-center"
@@ -19,12 +62,11 @@ export default function StudentBadge({ student, background }: StudentBadgeProps)
         <div
           className="absolute overflow-hidden"
           style={{
-            left: '3.5%',
-            top: '37.1%',
-            width: '27.4%',
-            height: '49%',
-            borderRadius: '12px',
-            border: '3px solid white',
+            left: `${(styles.photo.x / BADGE_BASE_WIDTH) * 100}%`,
+            top: `${(styles.photo.y / BADGE_BASE_HEIGHT) * 100}%`,
+            width: `${(styles.photo.width / BADGE_BASE_WIDTH) * 100}%`,
+            height: `${(styles.photo.height / BADGE_BASE_HEIGHT) * 100}%`,
+            borderRadius: `${styles.photo.borderRadius}px`,
             boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
           }}
         >
@@ -37,39 +79,14 @@ export default function StudentBadge({ student, background }: StudentBadgeProps)
           />
         </div>
 
-        {/* Student Name */}
-        <div
-          className="absolute flex items-center px-3 font-bold text-left truncate"
-          style={{
-            left: '44%',
-            top: '53.5%',
-            width: '41%',
-            height: '6.4%',
-            fontSize: 'clamp(0.7rem, 2vw, 1rem)',
-            color: '#2a4d7a',
-            backgroundColor: 'rgba(255, 255, 255, 0.85)',
-            borderRadius: '6px',
-          }}
-        >
-          {student.name}
-        </div>
-
-        {/* Student Class (Turma) */}
-        <div
-          className="absolute flex items-center px-3 font-bold text-left"
-          style={{
-            left: '44%',
-            top: '67.3%',
-            width: '28%',
-            height: '6.4%',
-            fontSize: 'clamp(0.7rem, 2vw, 1rem)',
-            color: '#2a4d7a',
-            backgroundColor: 'rgba(255, 255, 255, 0.85)',
-            borderRadius: '6px',
-          }}
-        >
-          {student.turma}
-        </div>
+        {renderText(student.name, styles.name)}
+        {renderText(student.turma, styles.turma)}
+        
+        {styles.customFields.map((field) => (
+           <div key={field.id}>
+             {renderText(field.text, field)}
+           </div>
+        ))}
       </div>
     </div>
   );
