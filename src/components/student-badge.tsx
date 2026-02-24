@@ -8,18 +8,11 @@ interface StudentBadgeProps {
 
 export default function StudentBadge({ student, background }: StudentBadgeProps) {
   return (
-    <div className="relative aspect-[1000/723] w-full overflow-hidden rounded-lg shadow-md bg-card">
-      {/* Background Image */}
-      <Image
-        src={background}
-        alt="Fundo do crachá"
-        fill
-        sizes="100%"
-        className="object-cover"
-        priority
-        data-ai-hint="school badge"
-      />
-
+    <div 
+      className="relative aspect-[1000/723] w-full overflow-hidden rounded-lg shadow-md bg-card bg-cover bg-center"
+      style={{ backgroundImage: `url(${background})` }}
+      data-ai-hint="school badge"
+    >
       {/* Content Wrapper */}
       <div className="absolute inset-0 z-10">
         {/* Student Photo */}
@@ -53,7 +46,7 @@ export default function StudentBadge({ student, background }: StudentBadgeProps)
             height: '7%',
             fontSize: 'clamp(0.8rem, 2.5vw, 1.1rem)',
             color: '#FFFFFF',
-            textShadow: '0px 1px 3px rgba(0, 0, 0, 0.5)'
+            textShadow: '0px 1px 3px rgba(0, 0, 0, 0.7)'
           }}
         >
           {student.name}
@@ -72,7 +65,7 @@ export default function StudentBadge({ student, background }: StudentBadgeProps)
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-            textShadow: '0px 1px 3px rgba(0, 0, 0, 0.5)'
+            textShadow: '0px 1px 3px rgba(0, 0, 0, 0.7)'
           }}
         >
           {student.turma}
