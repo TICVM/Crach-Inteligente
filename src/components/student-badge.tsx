@@ -52,7 +52,7 @@ export default function StudentBadge({ student, background, slogan }: StudentBad
             top: '51.9%', // 150px / 289px
             width: '59.5%', // 238px / 400px
             height: '9.68%', // 28px / 289px
-            fontSize: 'calc(0.0375 * 100vmin)', // 15px on a 400px wide element
+            fontSize: 'clamp(0.8rem, 2.5vw, 1rem)',
             color: '#2a4d7a',
             backgroundColor: 'rgba(255, 255, 255, 0.7)',
             borderRadius: '4px',
@@ -70,7 +70,7 @@ export default function StudentBadge({ student, background, slogan }: StudentBad
             top: '69.2%', // 200px / 289px
             width: '20%', // 80px / 400px
             height: '8.3%', // 24px / 289px
-            fontSize: 'calc(0.0375 * 100vmin)',
+            fontSize: 'clamp(0.8rem, 2.5vw, 1rem)',
             color: '#2a4d7a',
             backgroundColor: 'rgba(255, 255, 255, 0.9)',
             borderRadius: '4px',
@@ -87,7 +87,7 @@ export default function StudentBadge({ student, background, slogan }: StudentBad
             top: '80.2%', // 232px / 289px
             width: '59.5%', // 238px / 400px
             height: '8.3%', // 24px / 289px
-            fontSize: 'calc(0.03 * 100vmin)', // 12px on 400px
+            fontSize: 'clamp(0.6rem, 2vw, 0.8rem)',
             color: '#2a4d7a',
           }}
         >
