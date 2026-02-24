@@ -89,10 +89,6 @@ export const generatePdf = async (students: Student[], backgroundUrl: string, sl
         pdf.addImage(studentPhotoDataUrl, 'PNG', x + foto.left * pxToMmX, y + foto.top * pxToMmY, foto.width * pxToMmX, foto.height * pxToMmY);
 
         // Set up fonts and colors
-        pdf.addFont('PT_Sans-normal.ttf', 'PT Sans', 'normal');
-        pdf.addFont('PT_Sans-bold.ttf', 'PT Sans', 'bold');
-        pdf.addFont('PT_Sans-italic.ttf', 'PT Sans', 'italic');
-
         pdf.setTextColor('#2a4d7a');
 
         // 3. Add Name
@@ -104,7 +100,7 @@ export const generatePdf = async (students: Student[], backgroundUrl: string, sl
             nome.height * pxToMmY,
             1, 1, 'F'
         );
-        pdf.setFont('PT Sans', 'bold');
+        pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(nome.fontSize * pxToMmY * 2.5); // Adjust font size multiplier for mm
         pdf.text(
             student.name,
@@ -122,7 +118,7 @@ export const generatePdf = async (students: Student[], backgroundUrl: string, sl
             turma.height * pxToMmY,
             1, 1, 'F'
         );
-        pdf.setFont('PT Sans', 'bold');
+        pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(turma.fontSize * pxToMmY * 2.5);
         pdf.text(
             student.turma,
@@ -132,7 +128,7 @@ export const generatePdf = async (students: Student[], backgroundUrl: string, sl
         );
 
         // 5. Add Slogan
-        pdf.setFont('PT Sans', 'italic');
+        pdf.setFont('helvetica', 'italic');
         pdf.setFontSize(previewStyles.slogan.fontSize * pxToMmY * 2.5);
         pdf.text(
             `"${slogan}"`,
