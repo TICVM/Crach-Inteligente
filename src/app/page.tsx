@@ -22,18 +22,27 @@ export default function Home() {
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPdfLoading, setIsPdfLoading] = useState(false);
   const { toast } = useToast();
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    // Runs once on client after mount to load data from localStorage
     const defaultBg = PlaceHolderImages.find(img => img.id === 'default-background');
     if (defaultBg) {
-        setBackground(defaultBg.imageUrl);
+      setBackground(defaultBg.imageUrl);
     }
-  }, []);
 
-  useEffect(() => {
-    const savedStyle = localStorage.getItem('badgeStyleConfig');
-    if (savedStyle) {
-      try {
+    try {
+      const savedStudents = localStorage.getItem('students');
+      if (savedStudents) {
+        setStudents(JSON.parse(savedStudents));
+      }
+    } catch (error) {
+      console.error("Failed to parse students from localStorage", error);
+    }
+
+    try {
+      const savedStyle = localStorage.getItem('badgeStyleConfig');
+      if (savedStyle) {
         const parsed = JSON.parse(savedStyle);
         const mergedStyle = {
           ...defaultBadgeStyle,
@@ -42,22 +51,34 @@ export default function Home() {
           name: { ...defaultBadgeStyle.name, ...parsed.name },
           turma: { ...defaultBadgeStyle.turma, ...parsed.turma },
           customFields: parsed.customFields?.map((field: any) => ({
-            ...defaultBadgeStyle.name, // base styles
+            ...defaultBadgeStyle.name,
             id: '',
             label: '',
             ...field,
           })) || [],
         };
         setBadgeStyle(mergedStyle);
-      } catch (error) {
-        console.error("Failed to parse badge style from localStorage", error);
       }
+    } catch (error) {
+      console.error("Failed to parse badge style from localStorage", error);
     }
+    
+    setIsMounted(true);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('badgeStyleConfig', JSON.stringify(badgeStyle));
-  }, [badgeStyle]);
+    // Saves badgeStyle to localStorage on change, but only after initial mount
+    if (isMounted) {
+      localStorage.setItem('badgeStyleConfig', JSON.stringify(badgeStyle));
+    }
+  }, [badgeStyle, isMounted]);
+
+  useEffect(() => {
+    // Saves students to localStorage on change, but only after initial mount
+    if (isMounted) {
+      localStorage.setItem('students', JSON.stringify(students));
+    }
+  }, [students, isMounted]);
 
 
   const addStudent = (student: Omit<Student, "id">) => {
