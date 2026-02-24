@@ -83,20 +83,13 @@ service cloud.firestore {
     }
 
     /**
-     * @description Secures the global badge configuration.
-     *              The configuration is public for all to read, but only
-     *              administrators can modify it.
+     * @description Secures the global badge configuration. For this app, any signed-in user can manage the configuration.
      * @path        /configuracaoCracha/{configuracaoId}
-     * @allow       (get) An unauthenticated client requests the global config: `get /configuracaoCracha/global`
-     * @deny        (update) A non-admin user tries to change the background image: `update /configuracaoCracha/global`
-     * @principle   Implements public read access for non-sensitive data while restricting writes to administrators.
+     * @allow       (read, write) Any authenticated user can manage the global badge style configuration.
+     * @principle   Open access for authenticated users to facilitate easy collaboration in this specific tool.
      */
     match /configuracaoCracha/{configuracaoId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if isAdmin() && request.resource.data.id == configuracaoId;
-      allow update: if isAdmin() && resource != null && request.resource.data.id == resource.data.id;
-      allow delete: if isAdmin() && resource != null;
+      allow read, write: if isSignedIn();
     }
 
     /**

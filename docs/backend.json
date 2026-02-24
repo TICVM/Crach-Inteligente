@@ -37,7 +37,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ConfiguracaoCracha",
       "type": "object",
-      "description": "Armazena configurações globais para a geração de crachás, como o fundo personalizado.",
+      "description": "Armazena configurações globais para a geração de crachás, como o fundo personalizado e os estilos dos elementos.",
       "properties": {
         "id": {
           "type": "string",
@@ -45,18 +45,17 @@
         },
         "fundoCrachaUrl": {
           "type": "string",
-          "description": "URL ou identificador da imagem personalizada usada como fundo dos crachás, armazenada em um serviço de armazenamento de arquivos (ex: Firebase Storage). (Relationship: ConfiguracaoCracha 1:1 FundoImagem)"
+          "description": "URL ou identificador da imagem personalizada usada como fundo dos crachás."
         },
         "nomeFundoAtual": {
           "type": "string",
           "description": "Nome do arquivo da imagem de fundo atual, para exibição na interface do usuário."
+        },
+        "badgeStyle": {
+          "type": "object",
+          "description": "Objeto contendo todas as configurações de estilo do crachá (posições, cores, fontes, etc.)."
         }
-      },
-      "required": [
-        "id",
-        "fundoCrachaUrl",
-        "nomeFundoAtual"
-      ]
+      }
     }
   },
   "auth": {
