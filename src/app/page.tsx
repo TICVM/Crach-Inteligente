@@ -14,7 +14,7 @@ import StudentBadge from "@/components/student-badge";
 import { Button } from "@/components/ui/button";
 import { FileDown, Printer, Loader2 } from "lucide-react";
 import { type BadgeStyleConfig, defaultBadgeStyle } from "@/lib/badge-styles";
-import { useFirestore, useCollection, useAuth, useMemoFirebase } from "@/firebase";
+import { useFirestore, useCollection, useAuth, useMemoFirebase, useUser } from "@/firebase";
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { collection, doc } from "firebase/firestore";
 import { signInAnonymously } from "firebase/auth";
@@ -29,18 +29,21 @@ export default function Home() {
 
   const firestore = useFirestore();
   const auth = useAuth();
+  const { user, isUserLoading: isAuthLoading } = useUser();
   
   const alunosCollection = useMemoFirebase(() => {
-    if (!firestore) return null;
+    // Only create collection ref if firestore and user are available
+    if (!firestore || !user) return null;
     return collection(firestore, 'alunos');
-  }, [firestore]);
+  }, [firestore, user]);
 
   const { data: studentsData, isLoading: studentsLoading } = useCollection<Student>(alunosCollection);
   const students = studentsData || [];
 
   useEffect(() => {
-    // Sign in anonymously if not already signed in
-    if (auth && !auth.currentUser) {
+    // Handles anonymous sign-in.
+    // It will attempt to sign in only when the auth state is no longer loading and there's no user.
+    if (auth && !user && !isAuthLoading) {
       signInAnonymously(auth).catch((error) => {
         console.error("Anonymous sign-in failed", error);
         toast({
@@ -50,7 +53,7 @@ export default function Home() {
         });
       });
     }
-  }, [auth, toast]);
+  }, [auth, user, isAuthLoading, toast]);
 
 
   useEffect(() => {
@@ -185,12 +188,12 @@ export default function Home() {
 
             <div className="bg-card p-6 rounded-lg shadow-sm no-print">
                 <h2 className="text-2xl font-bold mb-4 text-primary">Alunos Cadastrados</h2>
-                {studentsLoading ? <Loader2 className="animate-spin mx-auto"/> : <StudentList students={students} onUpdate={updateStudent} onDelete={deleteStudent} badgeStyle={badgeStyle}/>}
+                {(studentsLoading || isAuthLoading) ? <Loader2 className="animate-spin mx-auto"/> : <StudentList students={students} onUpdate={updateStudent} onDelete={deleteStudent} badgeStyle={badgeStyle}/>}
             </div>
 
             <div className="bg-card p-6 rounded-lg shadow-sm no-print">
                 <h2 className="text-2xl font-bold mb-4 text-primary">Pré-visualização dos Crachás</h2>
-                {students.length > 0 ? (
+                {(studentsLoading || isAuthLoading) ? <Loader2 className="animate-spin mx-auto" /> : students.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {students.map((student) => (
                       <StudentBadge key={student.id} student={student} background={background} styles={badgeStyle} />
