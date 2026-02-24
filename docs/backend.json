@@ -1,0 +1,122 @@
+{
+  "entities": {
+    "Aluno": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Aluno",
+      "type": "object",
+      "description": "Representa um aluno registrado no sistema, contendo seus dados pessoais e de identificação para o crachá.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identificador único para a entidade Aluno."
+        },
+        "nome": {
+          "type": "string",
+          "description": "Nome completo do aluno a ser exibido no crachá."
+        },
+        "turma": {
+          "type": "string",
+          "description": "Turma ou classe à qual o aluno pertence, exibida no crachá."
+        },
+        "fotoUrl": {
+          "type": "string",
+          "description": "URL ou identificador da imagem de perfil do aluno, armazenada em um serviço de armazenamento de arquivos (ex: Firebase Storage). (Relationship: Aluno 1:1 Foto)"
+        },
+        "sloganGerado": {
+          "type": "string",
+          "description": "Lema ou slogan inspirador gerado por IA para o aluno, a ser exibido no crachá. Este campo é opcional e pode ser preenchido pela funcionalidade de IA."
+        }
+      },
+      "required": [
+        "id",
+        "nome",
+        "turma",
+        "fotoUrl"
+      ]
+    },
+    "ConfiguracaoCracha": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ConfiguracaoCracha",
+      "type": "object",
+      "description": "Armazena configurações globais para a geração de crachás, como o fundo personalizado.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identificador único para a entidade ConfiguracaoCracha. Recomenda-se um ID fixo (ex: 'globalConfig') já que há apenas uma configuração global."
+        },
+        "fundoCrachaUrl": {
+          "type": "string",
+          "description": "URL ou identificador da imagem personalizada usada como fundo dos crachás, armazenada em um serviço de armazenamento de arquivos (ex: Firebase Storage). (Relationship: ConfiguracaoCracha 1:1 FundoImagem)"
+        },
+        "nomeFundoAtual": {
+          "type": "string",
+          "description": "Nome do arquivo da imagem de fundo atual, para exibição na interface do usuário."
+        }
+      },
+      "required": [
+        "id",
+        "fundoCrachaUrl",
+        "nomeFundoAtual"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/alunos/{alunoId}",
+        "definition": {
+          "entityName": "Aluno",
+          "schema": {
+            "$ref": "#/backend/entities/Aluno"
+          },
+          "description": "Armazena dados de cada aluno. O campo 'id' do Aluno corresponde ao 'alunoId' do documento. O acesso de escrita (criar, atualizar, deletar) é restrito a administradores. A leitura pode ser restrita a administradores ou, em um cenário de crachás impressos, talvez acessível indiretamente via PDF gerado. Inclui o campo 'sloganGerado' que pode ser preenchido por IA.",
+          "params": [
+            {
+              "name": "alunoId",
+              "description": "Identificador único do aluno, usado como ID do documento."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/configuracaoCracha/{configuracaoId}",
+        "definition": {
+          "entityName": "ConfiguracaoCracha",
+          "schema": {
+            "$ref": "#/backend/entities/ConfiguracaoCracha"
+          },
+          "description": "Armazena configurações globais para a geração de crachás, como a URL da imagem de fundo personalizada. Recomenda-se que 'configuracaoId' seja um valor fixo como 'global'. O acesso de escrita é restrito a administradores. O acesso de leitura pode ser permitido para qualquer usuário autenticado ou até mesmo para não autenticados se a geração de PDF for pública, facilitando a renderização dos crachás.",
+          "params": [
+            {
+              "name": "configuracaoId",
+              "description": "Identificador único para a configuração do crachá. Recomenda-se um ID fixo como 'global'."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{uid}",
+        "definition": {
+          "entityName": "roles_admin",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Coleção auxiliar para definir quem são os administradores do sistema. A existência de um documento com o UID de um usuário nesta coleção confere a ele a role de administrador. Este documento pode ser vazio ou conter metadados mínimos (e.g., 'createdAt'). Essencial para a Independência de Autorização e DBAC.",
+          "params": [
+            {
+              "name": "uid",
+              "description": "O Firebase Auth UID do usuário que possui a role de administrador."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "A estrutura do Firestore foi projetada para garantir segurança, escalabilidade e debugabilidade, seguindo os princípios de Design Core e as Mandates de Estratégia. A prioridade foi dada à **Independência de Autorização** e à habilidade de suportar **QAPs (Queries are not Filters)**.\n\n**Justificativa de Design:**\n\n1.  **Independência de Autorização (Denormalização):**\n    *   **Alunos:** Todos os documentos de `Aluno` serão armazenados na coleção de nível superior `/alunos/{alunoId}`. A autorização para ler, criar, atualizar ou excluir um aluno não dependerá de dados em documentos pai ou em outras coleções complexas (`get()`). Em vez disso, a permissão será baseada exclusivamente no `uid` do usuário autenticado e na verificação se ele possui a role de administrador. Esta abordagem evita dependências hierárquicas, quebram operações atômicas e são difíceis de depurar em regras de segurança. O campo `id` de `Aluno` será o `alunoId` do documento, facilitando a referência direta.\n    *   **Configuração do Crachá:** A configuração global do crachá será armazenada em `/configuracaoCracha/{configuracaoId}`. Recomenda-se um `configuracaoId` fixo, como 'global', já que se espera apenas uma configuração. A autorização para modificar esta configuração também será independente, dependendo apenas do `uid` do usuário ser um administrador, eliminando a necessidade de `get()` para verificar o contexto de autorização.\n    *   **Roles de Administrador:** Uma coleção auxiliar `/roles_admin/{uid}` será usada para definir explicitamente quem são os administradores. A mera *existência* de um documento com o `uid` do usuário nesta coleção será o único critério para conferir a role de administrador. Esta é uma forma robusta e independente de gerenciar autorização (DBAC), sem a necessidade de custom claims no Auth ou `get()` complexos em regras.\n\n2.  **Suporte a QAPs (Queries are not Filters) e Segregação Estrutural:**\n    *   **Coleções Homogêneas:** As coleções `/alunos` e `/configuracaoCracha` são estruturalmente homogêneas em termos de postura de segurança. Todos os documentos dentro de `/alunos` são gerenciados por administradores; da mesma forma, `/configuracaoCracha` tem acesso de escrita restrito a administradores (e leitura potencialmente pública ou para usuários autenticados). Esta segregação significa que as regras de segurança podem ser simples e diretas, verificando apenas a identidade e role do usuário (`request.auth.uid` e `roles_admin` check), e não precisam filtrar resultados com base em dados *dentro* de cada documento da coleção.\n    *   Quando um administrador executa uma consulta de lista (`list`) em `/alunos`, as regras de segurança podem validar a autorização do administrador uma única vez, permitindo que o Firestore retorne todos os documentos que correspondem à consulta, sem a necessidade de o banco de dados realizar filtragens adicionais complexas para cada documento. Isso garante consultas eficientes e reduz a complexidade das regras. Se houvesse dados públicos e privados misturados, teríamos coleções separadas (ex: `/public_alunos` e `/private_alunos`) ou campos de autorização denormalizados em cada documento, o que não é necessário com uma gestão centralizada por administradores."
+  }
+}
