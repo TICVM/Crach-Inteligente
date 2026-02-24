@@ -8,8 +8,8 @@ interface StudentBadgeProps {
 
 export default function StudentBadge({ student, background }: StudentBadgeProps) {
   return (
-    <div 
-      className="relative aspect-[1000/723] w-full overflow-hidden rounded-lg shadow-md bg-card bg-cover bg-center"
+    <div
+      className="relative aspect-[1063/768] w-full overflow-hidden rounded-lg shadow-md bg-card bg-cover bg-center"
       style={{ backgroundImage: `url(${background})` }}
       data-ai-hint="school badge"
     >
@@ -17,14 +17,15 @@ export default function StudentBadge({ student, background }: StudentBadgeProps)
       <div className="absolute inset-0 z-10">
         {/* Student Photo */}
         <div
-          className="absolute overflow-hidden bg-white shadow-lg"
+          className="absolute overflow-hidden"
           style={{
-            left: '8.5%',
-            top: '47%',
-            width: '25%',
-            height: '42%',
-            borderRadius: '8px',
-            border: '2px solid white',
+            left: '3.5%',
+            top: '37.1%',
+            width: '27.4%',
+            height: '49%',
+            borderRadius: '12px',
+            border: '3px solid white',
+            boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
           }}
         >
           <Image
@@ -38,15 +39,16 @@ export default function StudentBadge({ student, background }: StudentBadgeProps)
 
         {/* Student Name */}
         <div
-          className="absolute flex items-center px-2 font-bold text-left truncate"
+          className="absolute flex items-center px-3 font-bold text-left truncate"
           style={{
-            left: '48%',
-            top: '56.5%',
-            width: '45%',
-            height: '7%',
-            fontSize: 'clamp(0.8rem, 2.5vw, 1.1rem)',
-            color: '#FFFFFF',
-            textShadow: '0px 1px 3px rgba(0, 0, 0, 0.7)'
+            left: '34.8%',
+            top: '53.4%',
+            width: '62%',
+            height: '6.4%',
+            fontSize: 'clamp(0.7rem, 2vw, 1rem)',
+            color: '#2a4d7a',
+            backgroundColor: 'rgba(255, 255, 255, 0.85)',
+            borderRadius: '6px',
           }}
         >
           {student.name}
@@ -54,18 +56,16 @@ export default function StudentBadge({ student, background }: StudentBadgeProps)
 
         {/* Student Class (Turma) */}
         <div
-          className="absolute flex items-center px-2 font-bold text-left"
+          className="absolute flex items-center px-3 font-bold text-left"
           style={{
-            left: '48%',
-            top: '68.5%',
-            width: '50%',
-            height: '7%',
-            fontSize: 'clamp(0.8rem, 2.5vw, 1.1rem)',
-            color: '#FFFFFF',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            textShadow: '0px 1px 3px rgba(0, 0, 0, 0.7)'
+            left: '34.8%',
+            top: '67.3%',
+            width: '21.4%',
+            height: '6.4%',
+            fontSize: 'clamp(0.7rem, 2vw, 1rem)',
+            color: '#2a4d7a',
+            backgroundColor: 'rgba(255, 255, 255, 0.85)',
+            borderRadius: '6px',
           }}
         >
           {student.turma}

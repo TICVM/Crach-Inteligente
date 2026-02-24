@@ -1,12 +1,12 @@
 import jsPDF from 'jspdf';
 import { type Student } from './types';
 
-// These styles are based on the original script's preview logic
+// These styles are based on a 1063x768 design
 const previewStyles = {
-    preview: { width: 1000, height: 723 },
-    foto: { left: 85, top: 342, width: 250, height: 305 },
-    nome: { left: 480, top: 411, width: 450, height: 51, fontSize: 32 },
-    turma: { left: 480, top: 498, width: 500, height: 51, fontSize: 32 },
+    preview: { width: 1063, height: 768 },
+    foto: { left: 38, top: 285, width: 292, height: 376 },
+    nome: { left: 370, top: 410, width: 658, height: 49, fontSize: 30 },
+    turma: { left: 370, top: 517, width: 227, height: 49, fontSize: 30 },
 };
 
 // Helper function to load an image and return its data URL
@@ -74,39 +74,50 @@ export const generatePdf = async (students: Student[], backgroundUrl: string) =>
         pdf.addImage(backgroundDataUrl, 'PNG', x, y, badgeWidth, badgeHeight);
 
         // 2. Add Photo (with white border effect)
-        const photoBorder = 0.5; // in mm
+        const photoBorder = 1; // in mm
         pdf.setFillColor(255, 255, 255);
         pdf.roundedRect(
             x + foto.left * pxToMmX - photoBorder,
             y + foto.top * pxToMmY - photoBorder,
             foto.width * pxToMmX + photoBorder * 2,
             foto.height * pxToMmY + photoBorder * 2,
-            2, 2, 'F' // 2mm radius
+            3, 3, 'F' // 3mm radius
         );
         
         const studentPhotoDataUrl = student.photo.startsWith('data:') ? student.photo : await toDataURL(student.photo);
         pdf.addImage(studentPhotoDataUrl, 'PNG', x + foto.left * pxToMmX, y + foto.top * pxToMmY, foto.width * pxToMmX, foto.height * pxToMmY);
 
-        // Set up fonts and colors
-        pdf.setTextColor('#FFFFFF');
+        // Set up font for text
         pdf.setFont('helvetica', 'bold');
-        
+
         // 3. Add Name
+        // Name Background
+        pdf.setFillColor(255, 255, 255);
+        pdf.roundedRect(x + nome.left * pxToMmX, y + nome.top * pxToMmY, nome.width * pxToMmX, nome.height * pxToMmY, 2, 2, 'F');
+        // Name Text
+        pdf.setTextColor(42, 77, 122); // #2a4d7a
         pdf.setFontSize(nome.fontSize * pxToMmX * 2.5); // Adjust font size based on scale
+        const namePaddingX = 15 * pxToMmX;
         pdf.text(
             student.name,
-            x + nome.left * pxToMmX,
+            x + nome.left * pxToMmX + namePaddingX,
             y + (nome.top + nome.height / 2) * pxToMmY,
-            { maxWidth: nome.width * pxToMmX, align: 'left', baseline: 'middle' }
+            { maxWidth: nome.width * pxToMmX - (namePaddingX * 2), align: 'left', baseline: 'middle' }
         );
         
         // 4. Add Class (Turma)
+        // Turma Background
+        pdf.setFillColor(255, 255, 255);
+        pdf.roundedRect(x + turma.left * pxToMmX, y + turma.top * pxToMmY, turma.width * pxToMmX, turma.height * pxToMmY, 2, 2, 'F');
+        // Turma Text
+        pdf.setTextColor(42, 77, 122); // #2a4d7a
         pdf.setFontSize(turma.fontSize * pxToMmX * 2.5); // Adjust font size
+        const turmaPaddingX = 15 * pxToMmX;
         pdf.text(
             student.turma,
-            x + turma.left * pxToMmX,
+            x + turma.left * pxToMmX + turmaPaddingX,
             y + (turma.top + turma.height / 2) * pxToMmY,
-            { maxWidth: turma.width * pxToMmX, align: 'left', baseline: 'middle' }
+            { maxWidth: turma.width * pxToMmX - (turmaPaddingX * 2), align: 'left', baseline: 'middle' }
         );
     }
     
