@@ -25,7 +25,7 @@ export default function CustomizeCard({ currentBackground, onSetBackground }: Cu
     const reader = new FileReader();
     reader.onload = (e) => {
       onSetBackground(e.target?.result as string);
-      toast({ title: 'Fundo atualizado!' });
+      toast({ title: 'Fundo atualizado para pré-visualização!' });
     };
     reader.readAsDataURL(file);
   };
@@ -48,7 +48,7 @@ export default function CustomizeCard({ currentBackground, onSetBackground }: Cu
                 </div>
                 <div className="flex-1">
                     <Input type="file" accept="image/*" ref={backgroundFileRef} onChange={handleBackgroundChange} />
-                    <p className="text-xs text-muted-foreground mt-1">Selecione uma imagem para o fundo.</p>
+                    <p className="text-xs text-muted-foreground mt-1">A alteração é válida apenas para a sessão atual.</p>
                 </div>
             </div>
         </div>

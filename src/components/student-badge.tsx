@@ -52,7 +52,8 @@ export default function StudentBadge({ student, background }: StudentBadgeProps)
             width: '45%',
             height: '7%',
             fontSize: 'clamp(0.8rem, 2.5vw, 1.1rem)',
-            color: '#2a4d7a',
+            color: '#FFFFFF',
+            textShadow: '0px 1px 3px rgba(0, 0, 0, 0.5)'
           }}
         >
           {student.name}
@@ -60,14 +61,18 @@ export default function StudentBadge({ student, background }: StudentBadgeProps)
 
         {/* Student Class (Turma) */}
         <div
-          className="absolute flex items-center px-2 font-bold text-left truncate"
+          className="absolute flex items-center px-2 font-bold text-left"
           style={{
             left: '48%',
             top: '68.5%',
-            width: '45%',
+            width: '50%',
             height: '7%',
             fontSize: 'clamp(0.8rem, 2.5vw, 1.1rem)',
-            color: '#2a4d7a',
+            color: '#FFFFFF',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            textShadow: '0px 1px 3px rgba(0, 0, 0, 0.5)'
           }}
         >
           {student.turma}
