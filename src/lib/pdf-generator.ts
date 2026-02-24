@@ -3,10 +3,10 @@ import { type Student } from './types';
 
 // These styles are based on the original script's preview logic
 const previewStyles = {
-    preview: { width: 400, height: 289 },
-    foto: { left: 14, top: 107, width: 110, height: 142 },
-    nome: { left: 136, top: 150, width: 238, height: 28, fontSize: 16 },
-    turma: { left: 136, top: 200, width: 180, height: 24, fontSize: 14 },
+    preview: { width: 1000, height: 723 },
+    foto: { left: 85, top: 342, width: 250, height: 305 },
+    nome: { left: 480, top: 411, width: 450, height: 51, fontSize: 32 },
+    turma: { left: 480, top: 498, width: 500, height: 51, fontSize: 32 },
 };
 
 // Helper function to load an image and return its data URL
@@ -88,42 +88,25 @@ export const generatePdf = async (students: Student[], backgroundUrl: string) =>
         pdf.addImage(studentPhotoDataUrl, 'PNG', x + foto.left * pxToMmX, y + foto.top * pxToMmY, foto.width * pxToMmX, foto.height * pxToMmY);
 
         // Set up fonts and colors
-        pdf.setTextColor('#2a4d7a');
-
-        // 3. Add Name
-        pdf.setFillColor(255, 255, 255, 0.7);
-        pdf.roundedRect(
-            x + nome.left * pxToMmX,
-            y + nome.top * pxToMmY,
-            nome.width * pxToMmX,
-            nome.height * pxToMmY,
-            1, 1, 'F'
-        );
+        pdf.setTextColor('#FFFFFF');
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(nome.fontSize); // Font size is now in points
+        
+        // 3. Add Name
+        pdf.setFontSize(nome.fontSize * pxToMmX * 2.5); // Adjust font size based on scale
         pdf.text(
             student.name,
-            x + nome.left * pxToMmX + 1, // small padding
-            y + nome.top * pxToMmY + (nome.height * pxToMmY) / 1.6,
-            { maxWidth: nome.width * pxToMmX - 2, align: 'left' }
+            x + nome.left * pxToMmX,
+            y + (nome.top + nome.height / 2) * pxToMmY,
+            { maxWidth: nome.width * pxToMmX, align: 'left', baseline: 'middle' }
         );
         
         // 4. Add Class (Turma)
-        pdf.setFillColor(255, 255, 255, 0.9);
-        pdf.roundedRect(
-            x + turma.left * pxToMmX,
-            y + turma.top * pxToMmY,
-            turma.width * pxToMmX,
-            turma.height * pxToMmY,
-            1, 1, 'F'
-        );
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(turma.fontSize);
+        pdf.setFontSize(turma.fontSize * pxToMmX * 2.5); // Adjust font size
         pdf.text(
             student.turma,
-            x + turma.left * pxToMmX + 1,
-            y + turma.top * pxToMmY + (turma.height * pxToMmY) / 1.6,
-            { maxWidth: turma.width * pxToMmX - 2, align: 'left' }
+            x + turma.left * pxToMmX,
+            y + (turma.top + turma.height / 2) * pxToMmY,
+            { maxWidth: turma.width * pxToMmX, align: 'left', baseline: 'middle' }
         );
     }
     
