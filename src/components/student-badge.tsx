@@ -64,13 +64,13 @@ export default function StudentBadge({ student, background, slogan }: StudentBad
 
         {/* Student Class (Turma) */}
         <div
-          className="absolute flex items-center px-2 font-bold text-left"
+          className="absolute flex items-center px-2 font-bold text-left truncate"
           style={{
             left: '34%', // 136px / 400px
             top: '69.2%', // 200px / 289px
-            width: '20%', // 80px / 400px
+            width: '30%', // 120px / 400px
             height: '8.3%', // 24px / 289px
-            fontSize: 'clamp(0.8rem, 2.5vw, 1rem)',
+            fontSize: 'clamp(0.7rem, 2.2vw, 0.9rem)',
             color: '#2a4d7a',
             backgroundColor: 'rgba(255, 255, 255, 0.9)',
             borderRadius: '4px',
