@@ -41,9 +41,9 @@ export default function StudentBadge({ student, background }: StudentBadgeProps)
         <div
           className="absolute flex items-center px-3 font-bold text-left truncate"
           style={{
-            left: '34.8%',
-            top: '53.4%',
-            width: '62%',
+            left: '44%',
+            top: '53.5%',
+            width: '41%',
             height: '6.4%',
             fontSize: 'clamp(0.7rem, 2vw, 1rem)',
             color: '#2a4d7a',
@@ -58,9 +58,9 @@ export default function StudentBadge({ student, background }: StudentBadgeProps)
         <div
           className="absolute flex items-center px-3 font-bold text-left"
           style={{
-            left: '34.8%',
+            left: '44%',
             top: '67.3%',
-            width: '21.4%',
+            width: '28%',
             height: '6.4%',
             fontSize: 'clamp(0.7rem, 2vw, 1rem)',
             color: '#2a4d7a',

@@ -5,8 +5,8 @@ import { type Student } from './types';
 const previewStyles = {
     preview: { width: 1063, height: 768 },
     foto: { left: 38, top: 285, width: 292, height: 376 },
-    nome: { left: 370, top: 410, width: 658, height: 49, fontSize: 30 },
-    turma: { left: 370, top: 517, width: 227, height: 49, fontSize: 30 },
+    nome: { left: 468, top: 411, width: 436, height: 49, fontSize: 30 },
+    turma: { left: 468, top: 517, width: 298, height: 49, fontSize: 30 },
 };
 
 // Helper function to load an image and return its data URL
@@ -92,7 +92,7 @@ export const generatePdf = async (students: Student[], backgroundUrl: string) =>
 
         // 3. Add Name
         // Name Background
-        pdf.setFillColor(255, 255, 255);
+        pdf.setFillColor(255, 255, 255, 0.85);
         pdf.roundedRect(x + nome.left * pxToMmX, y + nome.top * pxToMmY, nome.width * pxToMmX, nome.height * pxToMmY, 2, 2, 'F');
         // Name Text
         pdf.setTextColor(42, 77, 122); // #2a4d7a
@@ -107,7 +107,7 @@ export const generatePdf = async (students: Student[], backgroundUrl: string) =>
         
         // 4. Add Class (Turma)
         // Turma Background
-        pdf.setFillColor(255, 255, 255);
+        pdf.setFillColor(255, 255, 255, 0.85);
         pdf.roundedRect(x + turma.left * pxToMmX, y + turma.top * pxToMmY, turma.width * pxToMmX, turma.height * pxToMmY, 2, 2, 'F');
         // Turma Text
         pdf.setTextColor(42, 77, 122); // #2a4d7a
