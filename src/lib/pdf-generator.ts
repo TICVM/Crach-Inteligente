@@ -5,9 +5,8 @@ import { type Student } from './types';
 const previewStyles = {
     preview: { width: 400, height: 289 },
     foto: { left: 14, top: 107, width: 110, height: 142 },
-    nome: { left: 136, top: 150, width: 238, height: 28, fontSize: 15 },
-    turma: { left: 136, top: 200, width: 80, height: 24, fontSize: 15 },
-    slogan: { left: 136, top: 232, width: 238, height: 24, fontSize: 12 },
+    nome: { left: 136, top: 150, width: 238, height: 28, fontSize: 16 },
+    turma: { left: 136, top: 200, width: 180, height: 24, fontSize: 14 },
 };
 
 // Helper function to load an image and return its data URL
@@ -30,7 +29,7 @@ async function toDataURL(url: string): Promise<string> {
 }
 
 
-export const generatePdf = async (students: Student[], backgroundUrl: string, slogan: string) => {
+export const generatePdf = async (students: Student[], backgroundUrl: string) => {
     // A4 dimensions in mm
     const a4 = { width: 210, height: 297 };
     const badgesPerLine = 2;
@@ -101,7 +100,7 @@ export const generatePdf = async (students: Student[], backgroundUrl: string, sl
             1, 1, 'F'
         );
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(nome.fontSize * pxToMmY * 2.5); // Adjust font size multiplier for mm
+        pdf.setFontSize(nome.fontSize); // Font size is now in points
         pdf.text(
             student.name,
             x + nome.left * pxToMmX + 1, // small padding
@@ -119,22 +118,12 @@ export const generatePdf = async (students: Student[], backgroundUrl: string, sl
             1, 1, 'F'
         );
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(turma.fontSize * pxToMmY * 2.5);
+        pdf.setFontSize(turma.fontSize);
         pdf.text(
             student.turma,
             x + turma.left * pxToMmX + 1,
             y + turma.top * pxToMmY + (turma.height * pxToMmY) / 1.6,
             { maxWidth: turma.width * pxToMmX - 2, align: 'left' }
-        );
-
-        // 5. Add Slogan
-        pdf.setFont('helvetica', 'italic');
-        pdf.setFontSize(previewStyles.slogan.fontSize * pxToMmY * 2.5);
-        pdf.text(
-            `"${slogan}"`,
-            x + previewStyles.slogan.left * pxToMmX,
-            y + previewStyles.slogan.top * pxToMmY + (previewStyles.slogan.height * pxToMmY) / 1.6,
-            { maxWidth: previewStyles.slogan.width * pxToMmX, align: 'left'}
         );
     }
     

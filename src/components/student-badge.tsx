@@ -4,10 +4,9 @@ import Image from "next/image";
 interface StudentBadgeProps {
   student: Student;
   background: string;
-  slogan: string;
 }
 
-export default function StudentBadge({ student, background, slogan }: StudentBadgeProps) {
+export default function StudentBadge({ student, background }: StudentBadgeProps) {
   return (
     <div className="relative aspect-[400/289] w-full overflow-hidden rounded-lg shadow-md bg-card">
       {/* Background Image */}
@@ -68,7 +67,7 @@ export default function StudentBadge({ student, background, slogan }: StudentBad
           style={{
             left: '34%', // 136px / 400px
             top: '69.2%', // 200px / 289px
-            width: '30%', // 120px / 400px
+            width: '45%', // 180px / 400px
             height: '8.3%', // 24px / 289px
             fontSize: 'clamp(0.7rem, 2.2vw, 0.9rem)',
             color: '#2a4d7a',
@@ -77,21 +76,6 @@ export default function StudentBadge({ student, background, slogan }: StudentBad
           }}
         >
           {student.turma}
-        </div>
-
-        {/* Slogan */}
-        <div
-          className="absolute flex items-center px-2 text-left italic"
-          style={{
-            left: '34%', // 136px / 400px
-            top: '80.2%', // 232px / 289px
-            width: '59.5%', // 238px / 400px
-            height: '8.3%', // 24px / 289px
-            fontSize: 'clamp(0.6rem, 2vw, 0.8rem)',
-            color: '#2a4d7a',
-          }}
-        >
-          &ldquo;{slogan}&rdquo;
         </div>
       </div>
     </div>

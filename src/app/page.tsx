@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { generateStudentSlogan } from "@/ai/flows/generate-student-slogan-flow";
 import { useToast } from "@/hooks/use-toast";
 import { type Student } from "@/lib/types";
 import { generatePdf } from "@/lib/pdf-generator";
@@ -18,7 +17,6 @@ import { FileDown, Printer, Loader2 } from "lucide-react";
 export default function Home() {
   const [students, setStudents] = useState<Student[]>([]);
   const [background, setBackground] = useState<string>("");
-  const [slogan, setSlogan] = useState<string>("");
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPdfLoading, setIsPdfLoading] = useState(false);
   const { toast } = useToast();
@@ -50,19 +48,6 @@ export default function Home() {
     setStudents(prev => [...prev, ...studentsWithIds]);
     toast({ title: "Sucesso!", description: `${newStudents.length} alunos importados.` });
   };
-  
-  const handleGenerateSlogan = async (theme: string) => {
-    try {
-      const result = await generateStudentSlogan({ theme });
-      if (result.slogan) {
-        setSlogan(result.slogan);
-        toast({ title: "Lema gerado com IA!", description: result.slogan });
-      }
-    } catch (error) {
-      console.error(error);
-      toast({ variant: "destructive", title: "Erro", description: "Não foi possível gerar o lema." });
-    }
-  };
 
   const handlePrint = () => {
     if (students.length === 0) {
@@ -85,7 +70,7 @@ export default function Home() {
     }
     setIsPdfLoading(true);
     try {
-      await generatePdf(students, background, slogan);
+      await generatePdf(students, background);
     } catch (error) {
       console.error("PDF Generation Error:", error);
       toast({ variant: "destructive", title: "Erro", description: "Ocorreu um erro ao gerar o PDF." });
@@ -106,7 +91,6 @@ export default function Home() {
             <CustomizeCard
               currentBackground={background}
               onSetBackground={setBackground}
-              onGenerateSlogan={handleGenerateSlogan}
             />
           </div>
 
@@ -135,7 +119,7 @@ export default function Home() {
                 {students.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {students.map((student) => (
-                      <StudentBadge key={student.id} student={student} background={background} slogan={slogan} />
+                      <StudentBadge key={student.id} student={student} background={background} />
                     ))}
                   </div>
                 ) : (
@@ -150,7 +134,7 @@ export default function Home() {
            <div className="print-container">
             {students.map((student) => (
                 <div key={`print-${student.id}`} className="print-item">
-                    <StudentBadge student={student} background={background} slogan={slogan} />
+                    <StudentBadge student={student} background={background} />
                 </div>
             ))}
            </div>
