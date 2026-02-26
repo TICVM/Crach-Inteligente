@@ -33,23 +33,19 @@ export default function Home() {
   const auth = useAuth();
   const { user, isUserLoading: isAuthLoading } = useUser();
   
-  // Ref para controlar se a mudança veio do banco ou do usuário
-  const lastSavedConfigRef = useRef<string>("");
+  // Ref para controlar a última versão salva/carregada e evitar loops
+  const lastSyncedStateRef = useRef<string>("");
 
   useEffect(() => {
     setIsMounted(true);
     if (auth && !user && !isAuthLoading) {
       signInAnonymously(auth).catch((error) => {
         console.error("Falha na autenticação anônima", error);
-        toast({
-          variant: "destructive",
-          title: "Erro de Conexão",
-          description: "Não foi possível conectar ao servidor com segurança.",
-        });
       });
     }
-  }, [auth, user, isAuthLoading, toast]);
+  }, [auth, user, isAuthLoading]);
 
+  // Referência para a coleção de alunos
   const alunosCollection = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, 'alunos');
@@ -58,21 +54,24 @@ export default function Home() {
   const { data: studentsData, isLoading: studentsLoading } = useCollection<Student>(alunosCollection);
   const students = studentsData || [];
 
+  // Referência para o documento de configuração (único por usuário)
   const configDocRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    // Salva a configuração por usuário para evitar sobrescrever o design de outros
     return doc(firestore, 'configuracaoCracha', user.uid);
   }, [firestore, user]);
   
   const { data: configData, isLoading: isConfigLoading } = useDoc<any>(configDocRef);
 
-  // 1. CARREGAR dados do Firestore (Sincronização de Descida)
+  // 1. SINCRONIZAÇÃO DE DESCIDA (Download do Firestore)
   useEffect(() => {
-    if (isMounted && !isConfigLoading && user && !isConfigInitialized) {
+    // Só prosseguimos se o documento terminou de carregar (pode ser null se não existir)
+    if (!isMounted || isConfigLoading || !user || isConfigInitialized || !configDocRef) return;
+
+    if (configData !== undefined) {
       if (configData) {
-        // Se temos dados no banco, atualizamos o estado local
+        // Documento encontrado: Restaurar design
         const savedStyle = configData.badgeStyle;
-        const savedBackground = configData.fundoCrachaUrl;
+        const savedBackground = configData.fundoCrachaUrl || "";
         
         const mergedStyle = {
           ...defaultBadgeStyle,
@@ -84,51 +83,52 @@ export default function Home() {
         };
         
         setBadgeStyle(mergedStyle);
-        if (savedBackground) {
-          setBackground(savedBackground);
-        }
+        setBackground(savedBackground);
         
-        // Marcamos como sincronizado ANTES de permitir que o Sync Up rode
-        lastSavedConfigRef.current = JSON.stringify({ 
+        // Atualiza a ref para o estado que acabamos de baixar
+        lastSyncedStateRef.current = JSON.stringify({ 
           style: mergedStyle, 
-          bg: savedBackground || "" 
+          bg: savedBackground 
         });
-        setIsConfigInitialized(true);
-      } else if (configData === null) {
-        // Se o documento não existe, usamos os padrões e criamos no banco
+      } else {
+        // Documento não existe (Primeiro acesso): Criar com padrões
         const defaultBg = PlaceHolderImages.find(img => img.id === 'default-background')?.imageUrl || '';
         setBackground(defaultBg);
         setBadgeStyle(defaultBadgeStyle);
         
-        const initialConfig = { 
+        const initialState = { 
           badgeStyle: defaultBadgeStyle, 
           fundoCrachaUrl: defaultBg 
         };
         
-        if (configDocRef) {
-          setDocumentNonBlocking(configDocRef, initialConfig, { merge: true });
-          lastSavedConfigRef.current = JSON.stringify({ style: defaultBadgeStyle, bg: defaultBg });
-          setIsConfigInitialized(true);
-        }
+        setDocumentNonBlocking(configDocRef, initialState, { merge: true });
+        lastSyncedStateRef.current = JSON.stringify({ style: defaultBadgeStyle, bg: defaultBg });
       }
-    }
-  }, [configData, isConfigLoading, user, isMounted, configDocRef, isConfigInitialized]);
-  
-  // 2. SALVAR alterações no Firestore (Sincronização de Subida)
-  useEffect(() => {
-    // Só salvamos se já carregamos os dados iniciais com sucesso
-    if (isConfigInitialized && configDocRef && user) {
-      const currentConfigStr = JSON.stringify({ style: badgeStyle, bg: background });
       
-      if (currentConfigStr !== lastSavedConfigRef.current) {
+      // Marca como inicializado para liberar o salvamento automático (Sync Up)
+      setIsConfigInitialized(true);
+      console.log("Configurações recuperadas da nuvem com sucesso.");
+    }
+  }, [configData, isConfigLoading, user, isMounted, isConfigInitialized, configDocRef]);
+  
+  // 2. SINCRONIZAÇÃO DE SUBIDA (Upload para o Firestore)
+  useEffect(() => {
+    // SÓ SALVA se já carregamos a versão da nuvem primeiro
+    if (isConfigInitialized && configDocRef && user) {
+      const currentState = { style: badgeStyle, bg: background };
+      const currentStateStr = JSON.stringify(currentState);
+      
+      // Só dispara o salvamento se o estado atual for diferente do último sincronizado
+      if (currentStateStr !== lastSyncedStateRef.current) {
         const handler = setTimeout(() => {
           setDocumentNonBlocking(configDocRef, { 
-            badgeStyle, 
-            fundoCrachaUrl: background 
+            badgeStyle: currentState.style, 
+            fundoCrachaUrl: currentState.bg 
           }, { merge: true });
-          lastSavedConfigRef.current = currentConfigStr;
-          console.log("Configurações sincronizadas na nuvem.");
-        }, 1000);
+          
+          lastSyncedStateRef.current = currentStateStr;
+          console.log("Alterações de design salvas na nuvem.");
+        }, 1200); // Debounce de 1.2s para não sobrecarregar enquanto o usuário edita
 
         return () => clearTimeout(handler);
       }
@@ -244,10 +244,12 @@ export default function Home() {
                       <h2 className="text-xl font-bold text-primary">Alunos Registrados</h2>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Cloud className="h-3 w-3" />
-                        Sincronizado
+                        Sincronizado em Tempo Real
                       </div>
                     </div>
-                    {students.length > 0 ? (
+                    {studentsLoading ? (
+                      <div className="flex justify-center py-12"><Loader2 className="animate-spin" /></div>
+                    ) : students.length > 0 ? (
                       <StudentList students={students} onUpdate={updateStudent} onDelete={deleteStudent} badgeStyle={badgeStyle}/>
                     ) : (
                       <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed">

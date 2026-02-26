@@ -1,66 +1,39 @@
+
 {
   "entities": {
     "Aluno": {
       "title": "Aluno",
       "type": "object",
-      "description": "Representa um aluno registrado no sistema, contendo seus dados pessoais e de identificação para o crachá.",
+      "description": "Representa um aluno registrado no sistema.",
       "properties": {
-        "nome": {
-          "type": "string",
-          "description": "Nome completo do aluno."
-        },
-        "turma": {
-          "type": "string",
-          "description": "Turma ou classe do aluno."
-        },
-        "fotoUrl": {
-          "type": "string",
-          "description": "URL de dados (Base64) da imagem de perfil."
-        },
-        "customData": {
-          "type": "object",
-          "description": "Campos personalizados (Matrícula, Validade, etc.)."
-        }
+        "nome": { "type": "string" },
+        "turma": { "type": "string" },
+        "fotoUrl": { "type": "string" },
+        "customData": { "type": "object" }
       },
-      "required": [
-        "nome",
-        "turma",
-        "fotoUrl"
-      ]
+      "required": ["nome", "turma", "fotoUrl"]
     },
     "ConfiguracaoCracha": {
       "title": "ConfiguracaoCracha",
       "type": "object",
-      "description": "Configurações globais de design do crachá.",
+      "description": "Configurações de design do crachá.",
       "properties": {
-        "fundoCrachaUrl": {
-          "type": "string",
-          "description": "URL da imagem de fundo."
-        },
-        "badgeStyle": {
-          "type": "object",
-          "description": "Estilos de posicionamento, cores e fontes."
-        }
+        "fundoCrachaUrl": { "type": "string" },
+        "badgeStyle": { "type": "object" }
       }
     }
   },
   "auth": {
-    "providers": [
-      "anonymous"
-    ]
+    "providers": ["anonymous"]
   },
   "firestore": {
     "/alunos/{alunoId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Aluno"
-      },
-      "description": "Coleção de alunos. Acesso permitido para usuários autenticados."
+      "schema": { "$ref": "#/backend/entities/Aluno" },
+      "description": "Coleção de alunos."
     },
-    "/configuracaoCracha/{configuracaoId}": {
-      "schema": {
-        "$ref": "#/backend/entities/ConfiguracaoCracha"
-      },
-      "description": "Configuração global do crachá. Leitura pública, escrita autenticada."
+    "/configuracaoCracha/{userId}": {
+      "schema": { "$ref": "#/backend/entities/ConfiguracaoCracha" },
+      "description": "Design personalizado do usuário."
     }
   }
 }
