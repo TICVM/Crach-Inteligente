@@ -21,11 +21,22 @@ interface CustomizeCardProps {
   onStyleChange: (style: BadgeStyleConfig) => void;
 }
 
+const safeParseInt = (val: string): number => {
+  const parsed = parseInt(val);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
 const StyleInput = ({ label, value, onChange, unit = 'px', ...props }: { label: string, value: number, onChange: (e: ChangeEvent<HTMLInputElement>) => void, unit?: string, [key: string]: any }) => (
   <div className="grid grid-cols-2 items-center gap-2">
     <Label className="text-xs">{label}</Label>
     <div className="flex items-center gap-1">
-      <Input type="number" value={value} onChange={onChange} className="h-8 w-20" {...props} />
+      <Input 
+        type="number" 
+        value={isNaN(value) || value === undefined ? "" : value} 
+        onChange={onChange} 
+        className="h-8 w-20" 
+        {...props} 
+      />
       <span className="text-xs text-muted-foreground">{unit}</span>
     </div>
   </div>
@@ -34,14 +45,14 @@ const StyleInput = ({ label, value, onChange, unit = 'px', ...props }: { label: 
 const ColorInput = ({ label, value, onChange }: { label: string, value: string, onChange: (e: ChangeEvent<HTMLInputElement>) => void }) => (
   <div className="grid grid-cols-2 items-center gap-2">
     <Label className="text-xs">{label}</Label>
-    <Input type="color" value={value} onChange={onChange} className="h-8 w-20 p-1" />
+    <Input type="color" value={value || "#000000"} onChange={onChange} className="h-8 w-20 p-1" />
   </div>
 );
 
 const OpacitySlider = ({ label, value, onChange }: { label: string, value: number, onChange: (value: number[]) => void }) => (
     <div className="grid grid-cols-2 items-center gap-2">
         <Label className="text-xs">{label}</Label>
-        <Slider value={[value]} onValueChange={onChange} max={1} step={0.1} />
+        <Slider value={[isNaN(value) ? 0 : value]} onValueChange={onChange} max={1} step={0.1} />
     </div>
 );
 
@@ -59,7 +70,6 @@ export default function CustomizeCard({ currentBackground, onSetBackground, badg
     reader.onload = async (e) => {
       const rawDataUrl = e.target?.result as string;
       try {
-        // Otimiza o fundo para as dimensões padrão do crachá (1063x768)
         const optimizedBackground = await compressImage(rawDataUrl, 1063, 768, 0.7);
         onSetBackground(optimizedBackground);
         toast({ title: 'Fundo otimizado e atualizado!' });
@@ -130,15 +140,15 @@ export default function CustomizeCard({ currentBackground, onSetBackground, badg
     <AccordionItem value={field}>
       <AccordionTrigger className="text-base">{title}</AccordionTrigger>
       <AccordionContent className="space-y-3 p-1">
-        <StyleInput label="Posição X" value={badgeStyle[field].x} onChange={(e) => handleStyleChange(field, 'x', parseInt(e.target.value))} />
-        <StyleInput label="Posição Y" value={badgeStyle[field].y} onChange={(e) => handleStyleChange(field, 'y', parseInt(e.target.value))} />
-        <StyleInput label="Largura" value={badgeStyle[field].width} onChange={(e) => handleStyleChange(field, 'width', parseInt(e.target.value))} />
-        <StyleInput label="Altura" value={badgeStyle[field].height} onChange={(e) => handleStyleChange(field, 'height', parseInt(e.target.value))} />
-        <StyleInput label="Tam. Fonte" value={badgeStyle[field].fontSize} onChange={(e) => handleStyleChange(field, 'fontSize', parseInt(e.target.value))} />
+        <StyleInput label="Posição X" value={badgeStyle[field].x} onChange={(e) => handleStyleChange(field, 'x', safeParseInt(e.target.value))} />
+        <StyleInput label="Posição Y" value={badgeStyle[field].y} onChange={(e) => handleStyleChange(field, 'y', safeParseInt(e.target.value))} />
+        <StyleInput label="Largura" value={badgeStyle[field].width} onChange={(e) => handleStyleChange(field, 'width', safeParseInt(e.target.value))} />
+        <StyleInput label="Altura" value={badgeStyle[field].height} onChange={(e) => handleStyleChange(field, 'height', safeParseInt(e.target.value))} />
+        <StyleInput label="Tam. Fonte" value={badgeStyle[field].fontSize} onChange={(e) => handleStyleChange(field, 'fontSize', safeParseInt(e.target.value))} />
         <ColorInput label="Cor da Fonte" value={badgeStyle[field].color} onChange={(e) => handleStyleChange(field, 'color', e.target.value)} />
         <ColorInput label="Cor do Fundo" value={badgeStyle[field].backgroundColor} onChange={(e) => handleStyleChange(field, 'backgroundColor', e.target.value)} />
         <OpacitySlider label="Opacidade Fundo" value={badgeStyle[field].backgroundOpacity} onChange={(val) => handleStyleChange(field, 'backgroundOpacity', val[0])} />
-        <StyleInput label="Raio do Fundo" value={badgeStyle[field].backgroundRadius} onChange={(e) => handleStyleChange(field, 'backgroundRadius', parseInt(e.target.value))} />
+        <StyleInput label="Raio do Fundo" value={badgeStyle[field].backgroundRadius} onChange={(e) => handleStyleChange(field, 'backgroundRadius', safeParseInt(e.target.value))} />
       </AccordionContent>
     </AccordionItem>
   );
@@ -193,11 +203,11 @@ export default function CustomizeCard({ currentBackground, onSetBackground, badg
           <AccordionItem value="photo">
             <AccordionTrigger className="text-base">Foto do Aluno</AccordionTrigger>
             <AccordionContent className="space-y-3 p-1">
-              <StyleInput label="Posição X" value={badgeStyle.photo.x} onChange={(e) => handleStyleChange('photo', 'x', parseInt(e.target.value))} />
-              <StyleInput label="Posição Y" value={badgeStyle.photo.y} onChange={(e) => handleStyleChange('photo', 'y', parseInt(e.target.value))} />
-              <StyleInput label="Largura" value={badgeStyle.photo.width} onChange={(e) => handleStyleChange('photo', 'width', parseInt(e.target.value))} />
-              <StyleInput label="Altura" value={badgeStyle.photo.height} onChange={(e) => handleStyleChange('photo', 'height', parseInt(e.target.value))} />
-              <StyleInput label="Arredondamento" value={badgeStyle.photo.borderRadius} onChange={(e) => handleStyleChange('photo', 'borderRadius', parseInt(e.target.value))} />
+              <StyleInput label="Posição X" value={badgeStyle.photo.x} onChange={(e) => handleStyleChange('photo', 'x', safeParseInt(e.target.value))} />
+              <StyleInput label="Posição Y" value={badgeStyle.photo.y} onChange={(e) => handleStyleChange('photo', 'y', safeParseInt(e.target.value))} />
+              <StyleInput label="Largura" value={badgeStyle.photo.width} onChange={(e) => handleStyleChange('photo', 'width', safeParseInt(e.target.value))} />
+              <StyleInput label="Altura" value={badgeStyle.photo.height} onChange={(e) => handleStyleChange('photo', 'height', safeParseInt(e.target.value))} />
+              <StyleInput label="Arredondamento" value={badgeStyle.photo.borderRadius} onChange={(e) => handleStyleChange('photo', 'borderRadius', safeParseInt(e.target.value))} />
               <div className="border-t pt-3 mt-3 space-y-3">
                 <div className="grid grid-cols-2 items-center gap-2">
                   <Label className="text-xs">Borda</Label>
@@ -208,7 +218,7 @@ export default function CustomizeCard({ currentBackground, onSetBackground, badg
                 </div>
                 {badgeStyle.photo.hasBorder && (
                   <>
-                    <StyleInput label="Largura da Borda" value={badgeStyle.photo.borderWidth} onChange={(e) => handleStyleChange('photo', 'borderWidth', parseInt(e.target.value))} />
+                    <StyleInput label="Largura da Borda" value={badgeStyle.photo.borderWidth} onChange={(e) => handleStyleChange('photo', 'borderWidth', safeParseInt(e.target.value))} />
                     <ColorInput label="Cor da Borda" value={badgeStyle.photo.borderColor} onChange={(e) => handleStyleChange('photo', 'borderColor', e.target.value)} />
                     <OpacitySlider label="Opacidade da Borda" value={badgeStyle.photo.borderOpacity} onChange={(val) => handleStyleChange('photo', 'borderOpacity', val[0])} />
                   </>
@@ -239,15 +249,15 @@ export default function CustomizeCard({ currentBackground, onSetBackground, badg
                             <Label className="text-xs">Rótulo</Label>
                             <Input value={field.label} onChange={(e) => handleCustomFieldChange(field.id, 'label', e.target.value)} className="h-8"/>
                         </div>
-                        <StyleInput label="Posição X" value={field.x} onChange={(e) => handleCustomFieldChange(field.id, 'x', parseInt(e.target.value))} />
-                        <StyleInput label="Posição Y" value={field.y} onChange={(e) => handleCustomFieldChange(field.id, 'y', parseInt(e.target.value))} />
-                        <StyleInput label="Largura" value={field.width} onChange={(e) => handleCustomFieldChange(field.id, 'width', parseInt(e.target.value))} />
-                        <StyleInput label="Altura" value={field.height} onChange={(e) => handleCustomFieldChange(field.id, 'height', parseInt(e.target.value))} />
-                        <StyleInput label="Tam. Fonte" value={field.fontSize} onChange={(e) => handleCustomFieldChange(field.id, 'fontSize', parseInt(e.target.value))} />
+                        <StyleInput label="Posição X" value={field.x} onChange={(e) => handleCustomFieldChange(field.id, 'x', safeParseInt(e.target.value))} />
+                        <StyleInput label="Posição Y" value={field.y} onChange={(e) => handleCustomFieldChange(field.id, 'y', safeParseInt(e.target.value))} />
+                        <StyleInput label="Largura" value={field.width} onChange={(e) => handleCustomFieldChange(field.id, 'width', safeParseInt(e.target.value))} />
+                        <StyleInput label="Altura" value={field.height} onChange={(e) => handleCustomFieldChange(field.id, 'height', safeParseInt(e.target.value))} />
+                        <StyleInput label="Tam. Fonte" value={field.fontSize} onChange={(e) => handleCustomFieldChange(field.id, 'fontSize', safeParseInt(e.target.value))} />
                         <ColorInput label="Cor da Fonte" value={field.color} onChange={(e) => handleCustomFieldChange(field.id, 'color', e.target.value)} />
                         <ColorInput label="Cor do Fundo" value={field.backgroundColor} onChange={(e) => handleCustomFieldChange(field.id, 'backgroundColor', e.target.value)} />
                         <OpacitySlider label="Opacidade Fundo" value={field.backgroundOpacity} onChange={(val) => handleCustomFieldChange(field.id, 'backgroundOpacity', val[0])} />
-                        <StyleInput label="Raio do Fundo" value={field.backgroundRadius} onChange={(e) => handleCustomFieldChange(field.id, 'backgroundRadius', parseInt(e.target.value))} />
+                        <StyleInput label="Raio do Fundo" value={field.backgroundRadius} onChange={(e) => handleCustomFieldChange(field.id, 'backgroundRadius', safeParseInt(e.target.value))} />
                     </AccordionContent>
                    </AccordionItem>
                 </Accordion>
