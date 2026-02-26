@@ -14,13 +14,14 @@ import StudentList from "@/components/student-list";
 import StudentBadge from "@/components/student-badge";
 import ModelsListCard from "@/components/models-list-card";
 import { Button } from "@/components/ui/button";
-import { FileDown, Printer, Loader2, ChevronLeft, ChevronRight, LayoutGrid, List, CheckSquare, Square, Users, FilterX } from "lucide-react";
+import { FileDown, Printer, Loader2, ChevronLeft, ChevronRight, LayoutGrid, List, CheckSquare, Square, Users, FilterX, Settings2, Sparkles } from "lucide-react";
 import { type BadgeStyleConfig, defaultBadgeStyle } from "@/lib/badge-styles";
 import { useFirestore, useCollection, useAuth, useMemoFirebase, useUser } from "@/firebase";
 import { deleteDocumentNonBlocking, updateDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { collection, doc } from "firebase/firestore";
 import { signInAnonymously } from "firebase/auth";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Home() {
   const [activeModel, setActiveModel] = useState<BadgeModel | null>(null);
@@ -34,6 +35,7 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [previewIndex, setPreviewIndex] = useState(0);
   const [filterTurma, setFilterTurma] = useState<string | null>(null);
+  const [bulkModelId, setBulkModelId] = useState<string>("default");
   
   const { toast } = useToast();
   const firestore = useFirestore();
@@ -178,6 +180,22 @@ export default function Home() {
     if (!firestore) return;
     const studentDocRef = doc(firestore, 'alunos', studentId);
     deleteDocumentNonBlocking(studentDocRef);
+  };
+
+  const handleBulkApplyModel = () => {
+    if (enabledStudents.length === 0) {
+      toast({ variant: "destructive", title: "Atenção", description: "Nenhum aluno selecionado (ativo) para atualizar." });
+      return;
+    }
+
+    const mId = bulkModelId === "default" ? "" : bulkModelId;
+    const modelName = bulkModelId === "default" ? "Padrão" : (models.find(m => m.id === bulkModelId)?.nomeModelo || "Selecionado");
+
+    enabledStudents.forEach(student => {
+      updateStudent({ ...student, modeloId: mId });
+    });
+
+    toast({ title: "Design Atualizado!", description: `O modelo '${modelName}' foi aplicado a ${enabledStudents.length} alunos.` });
   };
 
   const handleGeneratePdf = async () => {
@@ -377,25 +395,57 @@ export default function Home() {
                         </div>
                       </div>
 
-                      {/* Ações Rápidas por Filtro */}
-                      <div className="flex flex-wrap gap-4 items-center justify-between no-print border-b pb-4">
-                        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                          {filterTurma ? (
-                            <span className="flex items-center gap-1">
-                              Exibindo: <Badge className="bg-primary/20 text-primary border-primary/20 hover:bg-primary/20">{filterTurma}</Badge>
-                              <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => setFilterTurma(null)}><FilterX size={10} /></Button>
-                            </span>
-                          ) : (
-                            <span>Exibindo todos os alunos</span>
-                          )}
+                      {/* Ações Rápidas e Edição em Massa */}
+                      <div className="space-y-4 no-print border-b pb-6">
+                        <div className="flex flex-wrap gap-4 items-center justify-between">
+                          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                            {filterTurma ? (
+                              <span className="flex items-center gap-1">
+                                Exibindo: <Badge className="bg-primary/20 text-primary border-primary/20 hover:bg-primary/20">{filterTurma}</Badge>
+                                <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => setFilterTurma(null)}><FilterX size={10} /></Button>
+                              </span>
+                            ) : (
+                              <span>Exibindo todos os alunos</span>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={() => toggleAllInCurrentView(true)} className="text-xs h-8">
+                              <CheckSquare className="mr-2 h-3 w-3" /> Ativar {filterTurma ? `Turma ${filterTurma}` : "Tudo"}
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => toggleAllInCurrentView(false)} className="text-xs h-8">
+                              <Square className="mr-2 h-3 w-3" /> Desativar {filterTurma ? `Turma ${filterTurma}` : "Tudo"}
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => toggleAllInCurrentView(true)} className="text-xs h-8">
-                            <CheckSquare className="mr-2 h-3 w-3" /> Ativar {filterTurma ? `Turma ${filterTurma}` : "Tudo"}
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => toggleAllInCurrentView(false)} className="text-xs h-8">
-                            <Square className="mr-2 h-3 w-3" /> Desativar {filterTurma ? `Turma ${filterTurma}` : "Tudo"}
-                          </Button>
+
+                        {/* Nova Seção: Alteração de Design em Massa */}
+                        <div className="bg-primary/5 p-4 rounded-lg border border-primary/10 flex flex-col sm:flex-row items-center gap-4">
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Sparkles size={16} className="text-primary" />
+                            <span className="text-xs font-bold uppercase tracking-tight">Alteração Rápida de Design</span>
+                          </div>
+                          <div className="flex flex-1 w-full gap-2 items-center">
+                            <Select onValueChange={setBulkModelId} value={bulkModelId}>
+                              <SelectTrigger className="h-9 text-xs">
+                                <SelectValue placeholder="Escolha um design" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="default">Design Aplicado (Padrão)</SelectItem>
+                                {models.map(m => (
+                                  <SelectItem key={m.id} value={m.id}>{m.nomeModelo}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button 
+                              size="sm" 
+                              onClick={handleBulkApplyModel} 
+                              disabled={enabledStudents.length === 0}
+                              className="h-9 px-4 gap-2 whitespace-nowrap"
+                            >
+                              <Settings2 size={14} />
+                              Aplicar aos {enabledStudents.length} Selecionados
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
