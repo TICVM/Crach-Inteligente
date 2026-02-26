@@ -14,7 +14,7 @@ import StudentList from "@/components/student-list";
 import StudentBadge from "@/components/student-badge";
 import ModelsListCard from "@/components/models-list-card";
 import { Button } from "@/components/ui/button";
-import { FileDown, Printer, Loader2, Cloud, RefreshCw } from "lucide-react";
+import { FileDown, Printer, Loader2, Cloud, RefreshCw, ChevronLeft, ChevronRight, LayoutGrid, List } from "lucide-react";
 import { type BadgeStyleConfig, defaultBadgeStyle } from "@/lib/badge-styles";
 import { useFirestore, useCollection, useAuth, useMemoFirebase, useUser } from "@/firebase";
 import { deleteDocumentNonBlocking, updateDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
@@ -31,6 +31,8 @@ export default function Home() {
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPdfLoading, setIsPdfLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [previewIndex, setPreviewIndex] = useState(0);
   
   const { toast } = useToast();
   const firestore = useFirestore();
@@ -149,9 +151,6 @@ export default function Home() {
     }
     setIsPdfLoading(true);
     try {
-      // O PDF generator agora precisa lidar com estilos individuais por aluno
-      // Para simplificar esta versão, usamos o modelo ativo para todos se selecionado,
-      // ou o estilo live atual.
       await generatePdf(students, liveBackground, liveStyle, models);
       toast({ title: "PDF gerado com sucesso!" });
     } catch (error) {
@@ -171,6 +170,16 @@ export default function Home() {
       setIsPrinting(false);
     }, 500);
   };
+
+  const nextPreview = () => setPreviewIndex((prev) => (prev + 1) % (students.length || 1));
+  const prevPreview = () => setPreviewIndex((prev) => (prev - 1 + (students.length || 1)) % (students.length || 1));
+
+  const currentPreviewStudent = students.length > 0 ? students[previewIndex % students.length] : {
+    id: "preview",
+    nome: "NOME DO ALUNO",
+    turma: "TURMA 101",
+    fotoUrl: PlaceHolderImages.find(i => i.id === 'avatar-placeholder')?.imageUrl || ""
+  };
   
   const isLoading = !isMounted || isAuthLoading || isModelsLoading;
 
@@ -181,7 +190,7 @@ export default function Home() {
         {isLoading ? (
             <div className="flex flex-col justify-center items-center h-96 gap-4">
                 <Loader2 className="animate-spin h-12 w-12 text-primary" />
-                <p className="text-muted-foreground animate-pulse">Carregando seus dados...</p>
+                <p className="text-muted-foreground animate-pulse">Sincronizando banco de dados...</p>
             </div>
         ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -216,7 +225,7 @@ export default function Home() {
               <div className="lg:col-span-2 flex flex-col gap-8">
                 <div className="bg-card p-6 rounded-lg shadow-sm no-print border">
                   <h2 className="text-xl font-bold mb-4 text-primary flex items-center gap-2">
-                    Exportação e Impressão
+                    Ações Rápidas
                   </h2>
                   <div className="flex flex-col sm:flex-row gap-4">
                      <Button className="flex-1 shadow-md" onClick={handleGeneratePdf} disabled={isPdfLoading || students.length === 0}>
@@ -230,12 +239,52 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="bg-card p-6 rounded-lg shadow-sm border">
+                <div className="bg-card p-6 rounded-lg shadow-sm border no-print">
                     <div className="flex justify-between items-center mb-4">
-                      <h2 className="text-xl font-bold text-primary">Gestão de Alunos</h2>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
-                        <Cloud className="h-3 w-3" />
-                        Nuvem Ativa
+                      <h2 className="text-xl font-bold text-primary">Preview com Dados do Banco</h2>
+                      {students.length > 1 && (
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="icon" onClick={prevPreview}><ChevronLeft /></Button>
+                          <span className="text-sm font-medium">{previewIndex + 1} / {students.length}</span>
+                          <Button variant="ghost" size="icon" onClick={nextPreview}><ChevronRight /></Button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="max-w-md mx-auto">
+                        <StudentBadge 
+                          student={currentPreviewStudent} 
+                          background={liveBackground} 
+                          styles={liveStyle} 
+                        />
+                        <p className="mt-4 text-xs text-center text-muted-foreground italic">
+                          Visualizando design "{liveModelName || 'Sem Nome'}" aplicado ao aluno <b>{currentPreviewStudent.nome}</b>.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="bg-card p-6 rounded-lg shadow-sm border">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                      <div>
+                        <h2 className="text-xl font-bold text-primary">Gestão de Alunos</h2>
+                        <p className="text-xs text-muted-foreground">Total: {students.length} alunos cadastrados</p>
+                      </div>
+                      <div className="flex items-center bg-muted p-1 rounded-md">
+                        <Button 
+                          variant={viewMode === 'table' ? 'secondary' : 'ghost'} 
+                          size="sm" 
+                          onClick={() => setViewMode('table')}
+                          className="h-8 gap-2"
+                        >
+                          <List size={14} /> Tabela
+                        </Button>
+                        <Button 
+                          variant={viewMode === 'grid' ? 'secondary' : 'ghost'} 
+                          size="sm" 
+                          onClick={() => setViewMode('grid')}
+                          className="h-8 gap-2"
+                        >
+                          <LayoutGrid size={14} /> Grade
+                        </Button>
                       </div>
                     </div>
                     {studentsLoading ? (
@@ -249,29 +298,11 @@ export default function Home() {
                         models={models}
                         onUpdate={updateStudent} 
                         onDelete={deleteStudent} 
+                        viewMode={viewMode}
+                        currentLiveBackground={liveBackground}
+                        currentLiveStyle={liveStyle}
                       />
                     )}
-                </div>
-
-                <div className="bg-card p-6 rounded-lg shadow-sm border no-print">
-                    <h2 className="text-xl font-bold mb-4 text-primary">Preview em Tempo Real</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="col-span-2">
-                          <StudentBadge 
-                            student={{ 
-                              id: "preview", 
-                              nome: "NOME DO ALUNO", 
-                              turma: "TURMA 101", 
-                              fotoUrl: PlaceHolderImages.find(i => i.id === 'avatar-placeholder')?.imageUrl || "" 
-                            }} 
-                            background={liveBackground} 
-                            styles={liveStyle} 
-                          />
-                          <p className="mt-2 text-xs text-center text-muted-foreground italic">
-                            Esta visualização reflete exatamente o que você ajusta no editor à esquerda.
-                          </p>
-                        </div>
-                    </div>
                 </div>
               </div>
             </div>
@@ -297,7 +328,7 @@ export default function Home() {
       
       {isMounted && (
         <footer className="text-center py-8 text-muted-foreground text-sm no-print border-t mt-8">
-          <p>&copy; {new Date().getFullYear()} Crachá Inteligente &bull; Edição Visual Dinâmica</p>
+          <p>&copy; {new Date().getFullYear()} Crachá Inteligente &bull; Dados Dinâmicos e Persistência em Nuvem</p>
         </footer>
       )}
     </div>

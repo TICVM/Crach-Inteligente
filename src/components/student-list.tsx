@@ -41,15 +41,28 @@ import * as z from "zod";
 import { Input } from './ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
 import { compressImage } from '@/lib/image-utils';
+import StudentBadge from './student-badge';
+import { type BadgeStyleConfig } from '@/lib/badge-styles';
 
 interface StudentListProps {
   students: Student[];
   models: BadgeModel[];
   onUpdate: (student: Student) => void;
   onDelete: (studentId: string) => void;
+  viewMode: 'table' | 'grid';
+  currentLiveBackground?: string;
+  currentLiveStyle?: BadgeStyleConfig;
 }
 
-export default function StudentList({ students, models, onUpdate, onDelete }: StudentListProps) {
+export default function StudentList({ 
+  students, 
+  models, 
+  onUpdate, 
+  onDelete, 
+  viewMode,
+  currentLiveBackground,
+  currentLiveStyle
+}: StudentListProps) {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -118,7 +131,53 @@ export default function StudentList({ students, models, onUpdate, onDelete }: St
   };
 
   if (students.length === 0) {
-    return <p className="text-muted-foreground text-center py-8">Nenhum aluno cadastrado.</p>;
+    return (
+      <div className="text-center py-20 bg-muted/20 rounded-lg border border-dashed">
+        <p className="text-muted-foreground">Nenhum aluno cadastrado ainda.</p>
+        <p className="text-xs text-muted-foreground mt-1">Use o formulário à esquerda para começar.</p>
+      </div>
+    );
+  }
+
+  if (viewMode === 'grid') {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {students.map((student) => {
+          const model = models.find(m => m.id === student.modeloId);
+          return (
+            <div key={student.id} className="relative group">
+              <StudentBadge 
+                student={student} 
+                background={model?.fundoCrachaUrl || currentLiveBackground || ''} 
+                styles={model?.badgeStyle || currentLiveStyle || ({} as BadgeStyleConfig)} 
+              />
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                <Button size="icon" variant="secondary" className="h-8 w-8 shadow-md" onClick={() => handleEditClick(student)}>
+                  <Pencil size={14} />
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="icon" variant="destructive" className="h-8 w-8 shadow-md">
+                      <Trash2 size={14} />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir Aluno?</AlertDialogTitle>
+                      <AlertDialogDescription>Remover {student.nome} permanentemente.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Não</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => onDelete(student.id)}>Sim, Excluir</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
   }
 
   return (
