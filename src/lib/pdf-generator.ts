@@ -103,21 +103,26 @@ export const generatePdf = async (
         const horizontalOffset = (style.paddingLeft || 0) * pxToMmX;
         const verticalOffset = (style.paddingTop || 0) * pxToMmY;
         
+        // Área útil após o padding (Simulando comportamento Flexbox do CSS)
+        const availableWidth = boxW - horizontalOffset;
+        const availableHeight = boxH - verticalOffset;
+
         // Cálculo do X de ancoragem
         let textX = boxX + horizontalOffset;
         if (style.textAlign === 'center') {
-            textX = boxX + boxW / 2 + horizontalOffset;
+            textX = boxX + horizontalOffset + (availableWidth / 2);
         } else if (style.textAlign === 'right') {
-            textX = boxX + boxW + horizontalOffset;
+            textX = boxX + horizontalOffset + availableWidth;
         }
 
-        // Cálculo do Y de ancoragem (Centro do retângulo + ajuste visual de baseline)
-        // O ajuste (fontSizeMm * 0.1) compensa a diferença de renderização do baseline 'middle' no jsPDF
-        const textY = boxY + (boxH / 2) + verticalOffset + (fontSizeMm * 0.1);
+        // Cálculo do Y de ancoragem
+        // Usamos baseline 'middle', então miramos no centro da área útil restante
+        const textY = boxY + verticalOffset + (availableHeight / 2);
 
+        // Proteção contra valores inválidos
         const safeX = isFinite(textX) ? textX : x;
         const safeY = isFinite(textY) ? textY : y;
-        const safeWidth = isFinite(boxW) ? boxW : 10;
+        const safeWidth = isFinite(availableWidth) && availableWidth > 0 ? availableWidth : 1;
 
         try {
             pdf.text(
@@ -125,7 +130,7 @@ export const generatePdf = async (
                 safeX,
                 safeY,
                 { 
-                    maxWidth: safeWidth > 0 ? safeWidth : 1, 
+                    maxWidth: safeWidth, 
                     align: (style.textAlign || 'left') as any,
                     baseline: 'middle'
                 }
