@@ -31,41 +31,48 @@ export default function Home() {
   const auth = useAuth();
   const { user, isUserLoading: isAuthLoading } = useUser();
   
+  // Referência para a coleção de alunos no Firestore
   const alunosCollection = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, 'alunos');
   }, [firestore, user]);
 
+  // Hook para buscar alunos em tempo real
   const { data: studentsData, isLoading: studentsLoading } = useCollection<Student>(alunosCollection);
   const students = studentsData || [];
 
+  // Referência para o documento de configuração global no Firestore
   const configDocRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return doc(firestore, 'configuracaoCracha', 'global');
   }, [firestore, user]);
   
+  // Hook para buscar configurações em tempo real
   const { data: configData, isLoading: isConfigLoading } = useDoc<any>(configDocRef);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
+  // Garantir que o usuário está logado anonimamente para acessar o Firestore
   useEffect(() => {
     if (auth && !user && !isAuthLoading) {
       signInAnonymously(auth).catch((error) => {
         console.error("Falha na autenticação anônima", error);
         toast({
           variant: "destructive",
-          title: "Falha na conexão",
-          description: "Não foi possível conectar ao banco de dados.",
+          title: "Erro de Conexão",
+          description: "Não foi possível conectar ao banco de dados em tempo real.",
         });
       });
     }
   }, [auth, user, isAuthLoading, toast]);
 
+  // Carregar configurações do Firestore quando disponíveis
   useEffect(() => {
     if (configData) {
       if (configData.badgeStyle) {
+        // Garantir que campos novos tenham valores padrão se não existirem no banco
         const parsed = configData.badgeStyle;
         const mergedStyle = {
             ...defaultBadgeStyle,
@@ -84,6 +91,7 @@ export default function Home() {
       }
       setBackground(configData.fundoCrachaUrl || PlaceHolderImages.find(img => img.id === 'default-background')?.imageUrl || '');
     } else if (configDocRef && !isConfigLoading && user) {
+        // Inicializar configuração padrão no banco se não existir
         const defaultConfig = {
             badgeStyle: defaultBadgeStyle,
             fundoCrachaUrl: PlaceHolderImages.find(img => img.id === 'default-background')?.imageUrl || ''
@@ -92,11 +100,15 @@ export default function Home() {
     }
   }, [configData, isConfigLoading, user, configDocRef]);
   
+  // Salvar alterações de estilo no Firestore com Debounce (atraso) para evitar excesso de gravações
   useEffect(() => {
     if (isMounted && configDocRef && !isConfigLoading && user && configData) {
       const handler = setTimeout(() => {
-        // Only update if there's an actual change to avoid loops
-        if (JSON.stringify(configData.badgeStyle) !== JSON.stringify(badgeStyle) || configData.fundoCrachaUrl !== background) {
+        // Comparação simples para evitar loop de atualização se os dados forem iguais
+        const hasStyleChanged = JSON.stringify(configData.badgeStyle) !== JSON.stringify(badgeStyle);
+        const hasBackgroundChanged = configData.fundoCrachaUrl !== background;
+        
+        if (hasStyleChanged || hasBackgroundChanged) {
           updateDocumentNonBlocking(configDocRef, { badgeStyle, fundoCrachaUrl: background });
         }
       }, 1500);
@@ -108,7 +120,7 @@ export default function Home() {
   const addStudent = (student: Omit<Student, "id">) => {
     if (!alunosCollection) return;
     addDocumentNonBlocking(alunosCollection, student);
-    toast({ title: "Sucesso!", description: "Aluno adicionado com sucesso." });
+    toast({ title: "Sucesso!", description: "Aluno salvo no banco de dados." });
   };
 
   const updateStudent = (updatedStudent: Student) => {
@@ -116,14 +128,14 @@ export default function Home() {
     const studentDocRef = doc(firestore, 'alunos', updatedStudent.id);
     const { id, ...dataToUpdate } = updatedStudent;
     updateDocumentNonBlocking(studentDocRef, dataToUpdate);
-    toast({ title: "Sucesso!", description: "Dados do aluno atualizados." });
+    toast({ title: "Sucesso!", description: "Dados atualizados no banco." });
   };
 
   const deleteStudent = (studentId: string) => {
     if (!firestore) return;
     const studentDocRef = doc(firestore, 'alunos', studentId);
     deleteDocumentNonBlocking(studentDocRef);
-    toast({ title: "Aluno removido." });
+    toast({ title: "Aluno removido do banco." });
   };
 
   const handleBulkImport = (newStudents: Omit<Student, "id">[]) => {
@@ -131,12 +143,12 @@ export default function Home() {
      newStudents.forEach(student => {
         addDocumentNonBlocking(alunosCollection, student);
      });
-     toast({ title: "Sucesso!", description: `${newStudents.length} alunos importados.` });
+     toast({ title: "Sucesso!", description: `${newStudents.length} alunos importados para o banco.` });
   };
 
   const handlePrint = () => {
     if (students.length === 0) {
-      toast({ variant: "destructive", title: "Atenção", description: "Adicione pelo menos um aluno para imprimir." });
+      toast({ variant: "destructive", title: "Atenção", description: "Adicione alunos para imprimir." });
       return;
     }
     setIsPrinting(true);
@@ -150,7 +162,7 @@ export default function Home() {
   
   const handleGeneratePdf = async () => {
     if (students.length === 0) {
-      toast({ variant: "destructive", title: "Atenção", description: "Adicione pelo menos um aluno para gerar o PDF." });
+      toast({ variant: "destructive", title: "Atenção", description: "Adicione alunos para gerar o PDF." });
       return;
     }
     setIsPdfLoading(true);
@@ -159,7 +171,7 @@ export default function Home() {
       toast({ title: "Sucesso!", description: "PDF gerado e baixado." });
     } catch (error) {
       console.error("Erro na geração do PDF:", error);
-      toast({ variant: "destructive", title: "Erro", description: "Ocorreu um erro ao processar o arquivo PDF." });
+      toast({ variant: "destructive", title: "Erro", description: "Erro ao processar o PDF." });
     } finally {
       setIsPdfLoading(false);
     }
@@ -174,7 +186,7 @@ export default function Home() {
         {isLoading ? (
             <div className="flex flex-col justify-center items-center h-64 gap-4">
                 <Loader2 className="animate-spin h-12 w-12 text-primary" />
-                <p className="text-muted-foreground animate-pulse">Carregando dados do sistema...</p>
+                <p className="text-muted-foreground animate-pulse">Conectando ao banco de dados...</p>
             </div>
         ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -207,12 +219,12 @@ export default function Home() {
                 </div>
 
                 <div className="bg-card p-6 rounded-lg shadow-sm border">
-                    <h2 className="text-xl font-bold mb-4 text-primary">Lista de Alunos</h2>
+                    <h2 className="text-xl font-bold mb-4 text-primary">Lista de Alunos (Sincronizada)</h2>
                     {students.length > 0 ? (
                       <StudentList students={students} onUpdate={updateStudent} onDelete={deleteStudent} badgeStyle={badgeStyle}/>
                     ) : (
                       <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed">
-                        Nenhum aluno cadastrado. Use o formulário lateral ou a importação em massa.
+                        Nenhum aluno no banco. Adicione manualmente ou importe via Excel.
                       </div>
                     )}
                 </div>
@@ -246,7 +258,7 @@ export default function Home() {
       
       {isMounted && (
         <footer className="text-center py-8 text-muted-foreground text-sm no-print">
-          <p>&copy; {new Date().getFullYear()} Crachá Inteligente. Sistema Profissional para Escolas.</p>
+          <p>&copy; {new Date().getFullYear()} Crachá Inteligente. Dados salvos no Cloud Firestore.</p>
         </footer>
       )}
     </div>
