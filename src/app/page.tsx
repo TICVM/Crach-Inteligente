@@ -13,7 +13,7 @@ import CustomizeCard from "@/components/customize-card";
 import StudentList from "@/components/student-list";
 import StudentBadge from "@/components/student-badge";
 import { Button } from "@/components/ui/button";
-import { FileDown, Printer, Loader2 } from "lucide-react";
+import { FileDown, Printer, Loader2, Cloud, RefreshCw } from "lucide-react";
 import { type BadgeStyleConfig, defaultBadgeStyle } from "@/lib/badge-styles";
 import { useFirestore, useCollection, useDoc, useAuth, useMemoFirebase, useUser } from "@/firebase";
 import { deleteDocumentNonBlocking, updateDocumentNonBlocking, setDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
@@ -66,75 +66,69 @@ export default function Home() {
   
   const { data: configData, isLoading: isConfigLoading } = useDoc<any>(configDocRef);
 
-  // 1. CARREGAR dados do Firestore (Sync DOWN)
+  // 1. CARREGAR dados do Firestore (Sincronização de Descida)
   useEffect(() => {
-    if (isMounted && !isConfigLoading && user) {
+    if (isMounted && !isConfigLoading && user && !isConfigInitialized) {
       if (configData) {
         // Se temos dados no banco, atualizamos o estado local
         const savedStyle = configData.badgeStyle;
         const savedBackground = configData.fundoCrachaUrl;
         
-        if (savedStyle) {
-          // Mesclagem profunda para garantir que novos campos do sistema não quebrem estilos antigos
-          const mergedStyle = {
-            ...defaultBadgeStyle,
-            ...savedStyle,
-            photo: { ...defaultBadgeStyle.photo, ...savedStyle.photo },
-            name: { ...defaultBadgeStyle.name, ...savedStyle.name },
-            turma: { ...defaultBadgeStyle.turma, ...savedStyle.turma },
-            customFields: savedStyle.customFields || [],
-          };
-          setBadgeStyle(mergedStyle);
-        }
+        const mergedStyle = {
+          ...defaultBadgeStyle,
+          ...savedStyle,
+          photo: { ...defaultBadgeStyle.photo, ...(savedStyle?.photo || {}) },
+          name: { ...defaultBadgeStyle.name, ...(savedStyle?.name || {}) },
+          turma: { ...defaultBadgeStyle.turma, ...(savedStyle?.turma || {}) },
+          customFields: savedStyle?.customFields || [],
+        };
         
+        setBadgeStyle(mergedStyle);
         if (savedBackground) {
           setBackground(savedBackground);
         }
         
-        // Registramos o que acabamos de carregar para não salvar de volta imediatamente
+        // Marcamos como sincronizado ANTES de permitir que o Sync Up rode
         lastSavedConfigRef.current = JSON.stringify({ 
-          style: savedStyle || defaultBadgeStyle, 
+          style: mergedStyle, 
           bg: savedBackground || "" 
         });
-        
         setIsConfigInitialized(true);
       } else if (configData === null) {
-        // Se o documento não existe no banco, inicializamos com os padrões
+        // Se o documento não existe, usamos os padrões e criamos no banco
         const defaultBg = PlaceHolderImages.find(img => img.id === 'default-background')?.imageUrl || '';
         setBackground(defaultBg);
         setBadgeStyle(defaultBadgeStyle);
         
-        const initialData = { 
+        const initialConfig = { 
           badgeStyle: defaultBadgeStyle, 
           fundoCrachaUrl: defaultBg 
         };
         
         if (configDocRef) {
-          setDocumentNonBlocking(configDocRef, initialData, { merge: true });
+          setDocumentNonBlocking(configDocRef, initialConfig, { merge: true });
           lastSavedConfigRef.current = JSON.stringify({ style: defaultBadgeStyle, bg: defaultBg });
           setIsConfigInitialized(true);
         }
       }
     }
-  }, [configData, isConfigLoading, user, isMounted, configDocRef]);
+  }, [configData, isConfigLoading, user, isMounted, configDocRef, isConfigInitialized]);
   
-  // 2. SALVAR alterações no Firestore (Sync UP) com Proteção
+  // 2. SALVAR alterações no Firestore (Sincronização de Subida)
   useEffect(() => {
-    // SÓ SALVAMOS se:
-    // - O sistema já carregou os dados iniciais do banco (isConfigInitialized)
-    // - Os dados atuais são diferentes dos que carregamos/salvamos pela última vez
+    // Só salvamos se já carregamos os dados iniciais com sucesso
     if (isConfigInitialized && configDocRef && user) {
       const currentConfigStr = JSON.stringify({ style: badgeStyle, bg: background });
       
       if (currentConfigStr !== lastSavedConfigRef.current) {
         const handler = setTimeout(() => {
-          updateDocumentNonBlocking(configDocRef, { 
+          setDocumentNonBlocking(configDocRef, { 
             badgeStyle, 
             fundoCrachaUrl: background 
-          });
+          }, { merge: true });
           lastSavedConfigRef.current = currentConfigStr;
-          console.log("Configurações salvas na nuvem com sucesso.");
-        }, 1000); // Debounce de 1 segundo
+          console.log("Configurações sincronizadas na nuvem.");
+        }, 1000);
 
         return () => clearTimeout(handler);
       }
@@ -201,7 +195,7 @@ export default function Home() {
     }
   };
   
-  const isLoading = !isMounted || isAuthLoading || (user && (studentsLoading || isConfigLoading || !isConfigInitialized));
+  const isLoading = !isMounted || isAuthLoading || (user && (!isConfigInitialized || isConfigLoading));
 
   return (
     <div className="min-h-screen bg-background">
@@ -210,7 +204,10 @@ export default function Home() {
         {isLoading ? (
             <div className="flex flex-col justify-center items-center h-64 gap-4">
                 <Loader2 className="animate-spin h-12 w-12 text-primary" />
-                <p className="text-muted-foreground animate-pulse">Sincronizando com seu banco de dados na nuvem...</p>
+                <div className="flex items-center gap-2 text-muted-foreground animate-pulse">
+                  <RefreshCw className="h-5 w-5" />
+                  <p>Recuperando seu design e dados da nuvem...</p>
+                </div>
             </div>
         ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -243,7 +240,13 @@ export default function Home() {
                 </div>
 
                 <div className="bg-card p-6 rounded-lg shadow-sm border">
-                    <h2 className="text-xl font-bold mb-4 text-primary">Lista de Alunos Sincronizada</h2>
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="text-xl font-bold text-primary">Alunos Registrados</h2>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Cloud className="h-3 w-3" />
+                        Sincronizado
+                      </div>
+                    </div>
                     {students.length > 0 ? (
                       <StudentList students={students} onUpdate={updateStudent} onDelete={deleteStudent} badgeStyle={badgeStyle}/>
                     ) : (
@@ -282,7 +285,7 @@ export default function Home() {
       
       {isMounted && (
         <footer className="text-center py-8 text-muted-foreground text-sm no-print border-t mt-8">
-          <p>&copy; {new Date().getFullYear()} Crachá Inteligente. Todos os dados estão protegidos e sincronizados no Cloud Firestore.</p>
+          <p>&copy; {new Date().getFullYear()} Crachá Inteligente. Conectado ao Cloud Firestore.</p>
         </footer>
       )}
     </div>
