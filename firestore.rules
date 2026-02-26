@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -17,8 +18,8 @@ service cloud.firestore {
     match /configuracaoCracha/{configuracaoId} {
       // Leitura é pública para permitir que o design carregue rapidamente sem erros de permissão
       allow read: if true;
-      // Escrita exige autenticação para proteger o design
-      allow write: if isSignedIn();
+      // Escrita exige que o usuário esteja logado e seja o proprietário da configuração
+      allow write: if isSignedIn() && (request.auth.uid == configuracaoId);
     }
     
     // Bloqueia qualquer outro acesso por padrão por segurança

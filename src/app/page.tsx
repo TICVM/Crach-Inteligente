@@ -70,6 +70,7 @@ export default function Home() {
     // Só processa se o componente estiver montado, auth pronto e os dados do doc terminarem de carregar (incluindo null)
     if (!isMounted || isAuthLoading || isConfigLoading || !user || isConfigInitialized || !configDocRef) return;
 
+    // configData === undefined significa que o useDoc ainda está carregando
     if (configData !== undefined) {
       if (configData) {
         // Encontrou design salvo na nuvem
