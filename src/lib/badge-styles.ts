@@ -14,6 +14,7 @@ export interface TextStyle extends BaseStyle {
   backgroundColor: string;
   backgroundOpacity: number;
   backgroundRadius: number;
+  paddingTop: number; // Novo campo para ajuste fino de posição vertical
 }
 
 export interface PhotoStyle extends BaseStyle {
@@ -34,10 +35,12 @@ export interface BadgeStyleConfig {
   name: TextStyle;
   turma: TextStyle;
   customFields: CustomField[];
+  badgeRadius: number; // Novo campo para arredondamento do crachá completo
 }
 
 // These values are in pixels, based on a 1063x768 design
 export const defaultBadgeStyle: BadgeStyleConfig = {
+  badgeRadius: 20,
   photo: {
     x: 376,
     y: 195,
@@ -61,6 +64,7 @@ export const defaultBadgeStyle: BadgeStyleConfig = {
     backgroundColor: '#ffffff',
     backgroundOpacity: 0.85,
     backgroundRadius: 10,
+    paddingTop: 0,
   },
   turma: {
     x: 380,
@@ -74,6 +78,7 @@ export const defaultBadgeStyle: BadgeStyleConfig = {
     backgroundColor: '#ffffff',
     backgroundOpacity: 0.85,
     backgroundRadius: 10,
+    paddingTop: 0,
   },
   customFields: [],
 };

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useRef, type ChangeEvent } from 'react';
@@ -34,7 +35,7 @@ const StyleInput = ({ label, value, onChange, unit = 'px', ...props }: { label: 
   <div className="grid grid-cols-2 items-center gap-2">
     <Label className="text-xs">{label}</Label>
     <div className="flex items-center gap-1">
-      <Input type="number" value={isNaN(value) ? 0 : value} onChange={onChange} className="h-8 w-20 text-xs" {...props} />
+      <input type="number" value={isNaN(value) ? 0 : value} onChange={onChange} className="h-8 w-20 text-xs border rounded px-2" {...props} />
       <span className="text-[10px] text-muted-foreground">{unit}</span>
     </div>
   </div>
@@ -81,14 +82,12 @@ export default function CustomizeCard({
     reader.readAsDataURL(file);
   };
 
-  const handleStyleChange = (section: keyof BadgeStyleConfig, key: keyof (PhotoStyle | TextStyle), value: any) => {
+  const handleStyleChange = (section: keyof BadgeStyleConfig, key: string, value: any) => {
     setBadgeStyle((prev) => ({
       ...prev,
-      [section]: {
-        // @ts-ignore
-        ...prev[section],
-        [key]: value
-      }
+      [section]: typeof prev[section as keyof BadgeStyleConfig] === 'object' 
+        ? { ...(prev[section as keyof BadgeStyleConfig] as object), [key]: value }
+        : value
     }));
   };
 
@@ -116,6 +115,7 @@ export default function CustomizeCard({
           backgroundColor: '#000000',
           backgroundOpacity: 0,
           backgroundRadius: 6,
+          paddingTop: 0,
       };
       setBadgeStyle(prev => ({ ...prev, customFields: [...prev.customFields, newField] }));
   };
@@ -140,10 +140,17 @@ export default function CustomizeCard({
             </div>
         </div>
 
+        <div className="pt-2 border-t mt-2">
+            <CustomSlider label="Deslocamento Vertical" value={badgeStyle[field].paddingTop} min={-100} max={100} step={1} onChange={(val) => handleStyleChange(field, 'paddingTop', val[0])} />
+            <div className="flex justify-end mt-1">
+                <span className="text-[10px] text-muted-foreground">{badgeStyle[field].paddingTop}px</span>
+            </div>
+        </div>
+
         <ColorInput label="Cor Fonte" value={badgeStyle[field].color} onChange={(e) => handleStyleChange(field, 'color', e.target.value)} />
         <ColorInput label="Cor Fundo" value={badgeStyle[field].backgroundColor} onChange={(e) => handleStyleChange(field, 'backgroundColor', e.target.value)} />
         <CustomSlider label="Opacidade Fundo" value={badgeStyle[field].backgroundOpacity} onChange={(val) => handleStyleChange(field, 'backgroundOpacity', val[0])} />
-        <StyleInput label="Arredondar" value={badgeStyle[field].backgroundRadius} onChange={(e) => handleStyleChange(field, 'backgroundRadius', safeParseInt(e.target.value))} />
+        <StyleInput label="Arredondar Cantos" value={badgeStyle[field].backgroundRadius} onChange={(e) => handleStyleChange(field, 'backgroundRadius', safeParseInt(e.target.value))} />
       </AccordionContent>
     </AccordionItem>
   );
@@ -175,12 +182,25 @@ export default function CustomizeCard({
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="background">
             <AccordionTrigger className="text-sm font-medium">Fundo do Crachá</AccordionTrigger>
-            <AccordionContent>
+            <AccordionContent className="space-y-4">
                 <div className="flex items-center gap-3 pt-2">
                     <div className="w-14 h-10 relative rounded border overflow-hidden bg-muted flex-shrink-0">
                         {background ? <NextImage src={background} alt="BG" fill className="object-cover" /> : null}
                     </div>
                     <Input type="file" accept="image/*" ref={backgroundFileRef} onChange={handleBackgroundChange} className="h-8 text-[10px] cursor-pointer" />
+                </div>
+                <div className="pt-2 border-t">
+                    <CustomSlider 
+                        label="Arredondar Crachá" 
+                        value={badgeStyle.badgeRadius} 
+                        min={0} 
+                        max={100} 
+                        step={1} 
+                        onChange={(val) => handleStyleChange('badgeRadius' as any, '', val[0])} 
+                    />
+                    <div className="flex justify-end mt-1">
+                        <span className="text-[10px] text-muted-foreground">{badgeStyle.badgeRadius}px</span>
+                    </div>
                 </div>
             </AccordionContent>
           </AccordionItem>
@@ -209,6 +229,7 @@ export default function CustomizeCard({
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => removeCustomField(field.id)}><Trash2 size={12}/></Button>
                     </div>
                     <StyleInput label="Posição Y" value={field.y} onChange={(e) => handleCustomFieldChange(field.id, 'y', safeParseInt(e.target.value))} />
+                    <CustomSlider label="Deslocamento V" value={field.paddingTop} min={-50} max={50} step={1} onChange={(val) => handleCustomFieldChange(field.id, 'paddingTop', val[0])} />
                 </div>
               ))}
                <Button onClick={addCustomField} className="w-full mt-2" variant="outline" size="sm">

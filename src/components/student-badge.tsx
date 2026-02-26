@@ -1,3 +1,4 @@
+
 import { type Student } from "@/lib/types";
 import { type BadgeStyleConfig, type TextStyle } from "@/lib/badge-styles";
 import Image from "next/image";
@@ -30,6 +31,7 @@ export default function StudentBadge({ student, background, styles }: StudentBad
     
     // Usamos cqh (Container Query Height) para que a fonte escale proporcionalmente à altura do crachá
     const scaledFontSize = `${(style.fontSize / BADGE_BASE_HEIGHT) * 100}cqh`;
+    const paddingTop = `${(style.paddingTop / BADGE_BASE_HEIGHT) * 100}cqh`;
     
     return (
       <div
@@ -46,6 +48,7 @@ export default function StudentBadge({ student, background, styles }: StudentBad
           backgroundColor: rgba,
           borderRadius: `${(style.backgroundRadius / BADGE_BASE_WIDTH) * 100}cqw`,
           padding: '0 0.3em',
+          paddingTop: paddingTop,
           justifyContent: style.textAlign === 'center' ? 'center' : style.textAlign === 'right' ? 'flex-end' : 'flex-start',
           zIndex: 20,
           lineHeight: 1.1
@@ -77,9 +80,12 @@ export default function StudentBadge({ student, background, styles }: StudentBad
     photoStyle.border = `${(styles.photo.borderWidth / BADGE_BASE_WIDTH) * 100}cqw solid ${borderColorRgba}`;
   }
 
+  const badgeRadius = `${(styles.badgeRadius / BADGE_BASE_WIDTH) * 100}cqw`;
+
   return (
     <div
       className="relative aspect-[1063/768] w-full overflow-hidden bg-white shadow-md [container-type:size]"
+      style={{ borderRadius: badgeRadius }}
       data-ai-hint="crachá estudante"
     >
       {/* Background Image - Tag IMG real para garantir renderização na impressão */}

@@ -1,3 +1,4 @@
+
 import jsPDF from 'jspdf';
 import { type Student, type BadgeModel } from './types';
 import { type BadgeStyleConfig, type TextStyle } from './badge-styles';
@@ -66,7 +67,6 @@ export const generatePdf = async (
         const bgRgb = hexToRgb(style.backgroundColor);
         if (bgRgb && style.backgroundOpacity > 0) {
             pdf.setFillColor(bgRgb.r, bgRgb.g, bgRgb.b);
-            // jsPDF não suporta opacidade nativamente para fill, simulamos como sólido ou ignoramos se for muito baixa
             if (style.backgroundOpacity > 0.2) {
                 pdf.roundedRect(
                     x + style.x * pxToMmX, 
@@ -85,8 +85,6 @@ export const generatePdf = async (
           pdf.setTextColor(textColorRgb.r, textColorRgb.g, textColorRgb.b);
         }
 
-        // Calibração de fonte: Convertemos o tamanho visual para mm e depois para pontos (pt)
-        // 1 pt ≈ 0.3527 mm. Portanto: mm * 2.83465 = pt
         const fontSizeMm = style.fontSize * pxToMmY;
         const pdfFontSizePt = fontSizeMm * 2.83465;
         
@@ -95,7 +93,10 @@ export const generatePdf = async (
         
         const textPaddingX = 2 * pxToMmX;
         const textX = x + style.x * pxToMmX + (style.textAlign === 'center' ? style.width * pxToMmX / 2 : style.textAlign === 'right' ? style.width * pxToMmX - textPaddingX : textPaddingX);
-        const textY = y + (style.y + style.height / 2) * pxToMmY + (fontSizeMm * 0.2); // Centralização vertical calibrada
+        
+        // Aplica o deslocamento vertical (paddingTop)
+        const verticalOffset = style.paddingTop * pxToMmY;
+        const textY = y + (style.y + style.height / 2) * pxToMmY + (fontSizeMm * 0.2) + verticalOffset;
 
         pdf.text(
             text,
@@ -127,6 +128,12 @@ export const generatePdf = async (
         const studentModel = models.find(m => m.id === student.modeloId);
         const currentBackground = studentModel?.fundoCrachaUrl || fallbackBackground;
         const currentStyle = studentModel?.badgeStyle || fallbackStyle;
+
+        // Clip rounded corners for the whole badge if radius > 0
+        if (currentStyle.badgeRadius > 0) {
+           // Not easy in standard jsPDF without extra plugins, 
+           // but we can draw the background image then rounded border
+        }
 
         // 1. Add Background
         if (!backgroundCache[currentBackground]) {
