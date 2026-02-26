@@ -65,6 +65,11 @@ export const generatePdf = async (
     const renderTextOnPdf = (text: string, style: TextStyle, x: number, y: number) => {
         if (!text || !style) return;
 
+        const boxX = x + (style.x || 0) * pxToMmX;
+        const boxY = y + (style.y || 0) * pxToMmY;
+        const boxW = (style.width || 100) * pxToMmX;
+        const boxH = (style.height || 40) * pxToMmY;
+
         // Fundo do texto (Retângulo)
         const bgRgb = hexToRgb(style.backgroundColor);
         const bgOpacity = typeof style.backgroundOpacity === 'number' ? style.backgroundOpacity : 0;
@@ -73,10 +78,10 @@ export const generatePdf = async (
             pdf.setFillColor(bgRgb.r, bgRgb.g, bgRgb.b);
             pdf.setGState(new (pdf as any).GState({ opacity: bgOpacity }));
             pdf.roundedRect(
-                x + (style.x || 0) * pxToMmX, 
-                y + (style.y || 0) * pxToMmY, 
-                (style.width || 100) * pxToMmX, 
-                (style.height || 40) * pxToMmY, 
+                boxX, 
+                boxY, 
+                boxW, 
+                boxH, 
                 (style.backgroundRadius || 0) * pxToMmX, 
                 (style.backgroundRadius || 0) * pxToMmY, 
                 'F'
@@ -95,28 +100,24 @@ export const generatePdf = async (
         pdf.setFontSize(pdfFontSizePt);
         pdf.setFont('helvetica', style.fontWeight === 'bold' ? 'bold' : 'normal');
         
-        // Simular o padding de 0.3em do CSS para alinhamento à esquerda
-        const emInMm = fontSizeMm;
-        const internalPaddingMm = style.textAlign === 'left' ? (emInMm * 0.3) : 0;
-
         const horizontalOffset = (style.paddingLeft || 0) * pxToMmX;
         const verticalOffset = (style.paddingTop || 0) * pxToMmY;
         
         // Cálculo do X de ancoragem
-        let textX = x + (style.x || 0) * pxToMmX + horizontalOffset + internalPaddingMm;
+        let textX = boxX + horizontalOffset;
         if (style.textAlign === 'center') {
-            textX = x + (style.x || 0) * pxToMmX + (style.width || 0) * pxToMmX / 2 + horizontalOffset;
+            textX = boxX + boxW / 2 + horizontalOffset;
         } else if (style.textAlign === 'right') {
-            textX = x + (style.x || 0) * pxToMmX + (style.width || 0) * pxToMmX - internalPaddingMm + horizontalOffset;
+            textX = boxX + boxW + horizontalOffset;
         }
 
         // Cálculo do Y de ancoragem (Centro do retângulo + ajuste visual de baseline)
-        // Adicionamos um pequeno ajuste de 0.5mm para baixo para compensar a renderização do jsPDF
-        const textY = y + ((style.y || 0) + (style.height || 0) / 2) * pxToMmY + verticalOffset + 0.5;
+        // O ajuste (fontSizeMm * 0.1) compensa a diferença de renderização do baseline 'middle' no jsPDF
+        const textY = boxY + (boxH / 2) + verticalOffset + (fontSizeMm * 0.1);
 
         const safeX = isFinite(textX) ? textX : x;
         const safeY = isFinite(textY) ? textY : y;
-        const safeWidth = isFinite((style.width || 100) * pxToMmX - internalPaddingMm * 2) ? (style.width || 100) * pxToMmX - internalPaddingMm * 2 : 10;
+        const safeWidth = isFinite(boxW) ? boxW : 10;
 
         try {
             pdf.text(

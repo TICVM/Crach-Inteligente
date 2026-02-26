@@ -48,7 +48,6 @@ export default function StudentBadge({ student, background, styles }: StudentBad
           textAlign: style.textAlign || 'left',
           backgroundColor: rgba,
           borderRadius: `${((style.backgroundRadius || 0) / BADGE_BASE_WIDTH) * 100}cqw`,
-          padding: '0 0.3em',
           paddingTop: paddingTop,
           paddingLeft: paddingLeft,
           justifyContent: style.textAlign === 'center' ? 'center' : style.textAlign === 'right' ? 'flex-end' : 'flex-start',
