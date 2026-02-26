@@ -110,6 +110,20 @@ export default function Home() {
     }
   };
 
+  const handleDuplicateModel = (model: BadgeModel) => {
+    if (!modelosCollection || !user) return;
+
+    const duplicatedData = {
+      nomeModelo: `${model.nomeModelo} (Cópia)`,
+      fundoCrachaUrl: model.fundoCrachaUrl,
+      badgeStyle: JSON.parse(JSON.stringify(model.badgeStyle)), // Deep copy
+      userId: user.uid
+    };
+
+    addDocumentNonBlocking(modelosCollection, duplicatedData);
+    toast({ title: "Modelo duplicado!", description: "Uma cópia do design foi criada." });
+  };
+
   const handleNewModel = () => {
     setActiveModel(null);
     setLiveStyle(defaultBadgeStyle);
@@ -199,7 +213,8 @@ export default function Home() {
                   models={models} 
                   activeModelId={activeModel?.id} 
                   onSelect={setActiveModel} 
-                  onDelete={handleDeleteModel} 
+                  onDelete={handleDeleteModel}
+                  onDuplicate={handleDuplicateModel}
                 />
                 
                 <CustomizeCard

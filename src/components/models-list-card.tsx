@@ -6,7 +6,7 @@ import { type BadgeModel } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Layout, Trash2, CheckCircle2, Plus } from "lucide-react";
+import { Layout, Trash2, CheckCircle2, Plus, Copy } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
@@ -15,9 +15,10 @@ interface ModelsListCardProps {
   activeModelId?: string;
   onSelect: (model: BadgeModel) => void;
   onDelete: (modelId: string) => void;
+  onDuplicate: (model: BadgeModel) => void;
 }
 
-export default function ModelsListCard({ models, activeModelId, onSelect, onDelete }: ModelsListCardProps) {
+export default function ModelsListCard({ models, activeModelId, onSelect, onDelete, onDuplicate }: ModelsListCardProps) {
   return (
     <Card className="border-2 border-primary/20">
       <CardHeader className="pb-3">
@@ -51,17 +52,32 @@ export default function ModelsListCard({ models, activeModelId, onSelect, onDele
                     )}
                     <span className="font-medium text-sm truncate">{model.nomeModelo}</span>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(model.id);
-                    }}
-                  >
-                    <Trash2 size={14} />
-                  </Button>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-muted-foreground hover:text-primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDuplicate(model);
+                      }}
+                      title="Duplicar Modelo"
+                    >
+                      <Copy size={14} />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(model.id);
+                      }}
+                      title="Excluir Modelo"
+                    >
+                      <Trash2 size={14} />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
