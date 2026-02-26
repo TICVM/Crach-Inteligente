@@ -36,3 +36,4 @@ git push -u origin main
 ## 📄 Licença
 
 Este projeto foi desenvolvido utilizando o Firebase Studio.
+# Crach-Inteligente
