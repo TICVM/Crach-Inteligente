@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { type Student, type BadgeModel } from "@/lib/types";
 import { generatePdf } from "@/lib/pdf-generator";
@@ -14,12 +14,13 @@ import StudentList from "@/components/student-list";
 import StudentBadge from "@/components/student-badge";
 import ModelsListCard from "@/components/models-list-card";
 import { Button } from "@/components/ui/button";
-import { FileDown, Printer, Loader2, ChevronLeft, ChevronRight, LayoutGrid, List, CheckSquare, Square } from "lucide-react";
+import { FileDown, Printer, Loader2, ChevronLeft, ChevronRight, LayoutGrid, List, CheckSquare, Square, Users, FilterX } from "lucide-react";
 import { type BadgeStyleConfig, defaultBadgeStyle } from "@/lib/badge-styles";
 import { useFirestore, useCollection, useAuth, useMemoFirebase, useUser } from "@/firebase";
 import { deleteDocumentNonBlocking, updateDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { collection, doc } from "firebase/firestore";
 import { signInAnonymously } from "firebase/auth";
+import { Badge } from "@/components/ui/badge";
 
 export default function Home() {
   const [activeModel, setActiveModel] = useState<BadgeModel | null>(null);
@@ -32,6 +33,7 @@ export default function Home() {
   const [isMounted, setIsMounted] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [previewIndex, setPreviewIndex] = useState(0);
+  const [filterTurma, setFilterTurma] = useState<string | null>(null);
   
   const { toast } = useToast();
   const firestore = useFirestore();
@@ -61,7 +63,22 @@ export default function Home() {
   const students = studentsData || [];
   const models = modelsData || [];
 
-  // Filtra apenas os alunos habilitados para impressão
+  // Estatísticas por turma
+  const turmaStats = useMemo(() => {
+    const stats: Record<string, number> = {};
+    students.forEach(s => {
+      stats[s.turma] = (stats[s.turma] || 0) + 1;
+    });
+    return Object.entries(stats).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [students]);
+
+  // Filtra alunos baseados na turma selecionada
+  const filteredStudents = useMemo(() => {
+    if (!filterTurma) return students;
+    return students.filter(s => s.turma === filterTurma);
+  }, [students, filterTurma]);
+
+  // Filtra apenas os alunos habilitados para impressão (do total, não apenas filtrados)
   const enabledStudents = students.filter(s => s.enabled !== false);
 
   useEffect(() => {
@@ -193,13 +210,14 @@ export default function Home() {
     }, 500);
   };
 
-  const toggleAllStudents = (enable: boolean) => {
-    students.forEach(student => {
+  const toggleAllInCurrentView = (enable: boolean) => {
+    filteredStudents.forEach(student => {
       if (student.enabled !== enable) {
         updateStudent({ ...student, enabled: enable });
       }
     });
-    toast({ title: enable ? "Todos os alunos ativados" : "Todos os alunos desativados" });
+    const scope = filterTurma ? `na turma ${filterTurma}` : "em todos os alunos";
+    toast({ title: `${enable ? "Ativados" : "Desativados"} ${scope}` });
   };
 
   const nextPreview = () => setPreviewIndex((prev) => (prev + 1) % (students.length || 1));
@@ -275,14 +293,6 @@ export default function Home() {
                       Imprimir Folha A4
                     </Button>
                   </div>
-                  <div className="flex gap-2 mt-4 justify-center">
-                    <Button variant="ghost" size="sm" onClick={() => toggleAllStudents(true)} className="text-xs h-8">
-                      <CheckSquare className="mr-2 h-3 w-3" /> Selecionar Todos
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => toggleAllStudents(false)} className="text-xs h-8">
-                      <Square className="mr-2 h-3 w-3" /> Desmarcar Todos
-                    </Button>
-                  </div>
                 </div>
 
                 <div className="bg-card p-6 rounded-lg shadow-sm border no-print">
@@ -309,30 +319,85 @@ export default function Home() {
                 </div>
 
                 <div className="bg-card p-6 rounded-lg shadow-sm border">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                      <div>
-                        <h2 className="text-xl font-bold text-primary">Gestão de Alunos</h2>
-                        <p className="text-xs text-muted-foreground">Habilite os crachás que deseja imprimir.</p>
+                    <div className="flex flex-col mb-6 gap-6">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                          <h2 className="text-xl font-bold text-primary">Gestão de Alunos</h2>
+                          <p className="text-xs text-muted-foreground">Filtre por turma e gerencie a impressão.</p>
+                        </div>
+                        <div className="flex items-center bg-muted p-1 rounded-md no-print">
+                          <Button 
+                            variant={viewMode === 'table' ? 'secondary' : 'ghost'} 
+                            size="sm" 
+                            onClick={() => setViewMode('table')}
+                            className="h-8 gap-2"
+                          >
+                            <List size={14} /> Tabela
+                          </Button>
+                          <Button 
+                            variant={viewMode === 'grid' ? 'secondary' : 'ghost'} 
+                            size="sm" 
+                            onClick={() => setViewMode('grid')}
+                            className="h-8 gap-2"
+                          >
+                            <LayoutGrid size={14} /> Grade
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center bg-muted p-1 rounded-md no-print">
-                        <Button 
-                          variant={viewMode === 'table' ? 'secondary' : 'ghost'} 
-                          size="sm" 
-                          onClick={() => setViewMode('table')}
-                          className="h-8 gap-2"
-                        >
-                          <List size={14} /> Tabela
-                        </Button>
-                        <Button 
-                          variant={viewMode === 'grid' ? 'secondary' : 'ghost'} 
-                          size="sm" 
-                          onClick={() => setViewMode('grid')}
-                          className="h-8 gap-2"
-                        >
-                          <LayoutGrid size={14} /> Grade
-                        </Button>
+
+                      {/* Painel de Resumo por Turma */}
+                      <div className="bg-muted/30 p-4 rounded-lg border no-print">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Users size={16} className="text-primary" />
+                          <h3 className="text-sm font-bold uppercase tracking-wider">Resumo por Turma</h3>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button 
+                            variant={filterTurma === null ? "default" : "outline"} 
+                            size="sm" 
+                            onClick={() => setFilterTurma(null)}
+                            className="h-8 text-xs"
+                          >
+                            Todas ({students.length})
+                          </Button>
+                          {turmaStats.map(([turma, count]) => (
+                            <Button 
+                              key={turma} 
+                              variant={filterTurma === turma ? "default" : "outline"} 
+                              size="sm" 
+                              onClick={() => setFilterTurma(turma)}
+                              className="h-8 text-xs gap-2"
+                            >
+                              {turma} 
+                              <Badge variant="secondary" className="h-4 px-1 text-[10px]">{count}</Badge>
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Ações Rápidas por Filtro */}
+                      <div className="flex flex-wrap gap-4 items-center justify-between no-print border-b pb-4">
+                        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                          {filterTurma ? (
+                            <span className="flex items-center gap-1">
+                              Exibindo: <Badge className="bg-primary/20 text-primary border-primary/20 hover:bg-primary/20">{filterTurma}</Badge>
+                              <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => setFilterTurma(null)}><FilterX size={10} /></Button>
+                            </span>
+                          ) : (
+                            <span>Exibindo todos os alunos</span>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => toggleAllInCurrentView(true)} className="text-xs h-8">
+                            <CheckSquare className="mr-2 h-3 w-3" /> Ativar {filterTurma ? `Turma ${filterTurma}` : "Tudo"}
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => toggleAllInCurrentView(false)} className="text-xs h-8">
+                            <Square className="mr-2 h-3 w-3" /> Desativar {filterTurma ? `Turma ${filterTurma}` : "Tudo"}
+                          </Button>
+                        </div>
                       </div>
                     </div>
+
                     {studentsLoading ? (
                       <div className="flex flex-col items-center py-12">
                         <Loader2 className="animate-spin mb-2" />
@@ -340,7 +405,7 @@ export default function Home() {
                       </div>
                     ) : (
                       <StudentList 
-                        students={students} 
+                        students={filteredStudents} 
                         models={models}
                         onUpdate={updateStudent} 
                         onDelete={deleteStudent} 
