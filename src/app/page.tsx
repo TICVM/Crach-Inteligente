@@ -35,12 +35,10 @@ export default function Home() {
   const auth = useAuth();
   const { user, isUserLoading: isAuthLoading } = useUser();
   
-  // Ref para rastrear o estado exato que está no banco de dados para comparação
   const lastSavedStateRef = useRef<string>("");
 
   useEffect(() => {
     setIsMounted(true);
-    // Garante que o usuário esteja logado de forma anônima para persistência local
     if (auth && !user && !isAuthLoading) {
       signInAnonymously(auth).catch((error) => {
         console.error("Erro na autenticação anônima:", error);
@@ -48,7 +46,6 @@ export default function Home() {
     }
   }, [auth, user, isAuthLoading]);
 
-  // Referência para a coleção de alunos
   const alunosCollection = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, 'alunos');
@@ -57,7 +54,6 @@ export default function Home() {
   const { data: studentsData, isLoading: studentsLoading } = useCollection<Student>(alunosCollection);
   const students = studentsData || [];
 
-  // Referência para o documento de configuração do design do usuário
   const configDocRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return doc(firestore, 'configuracaoCracha', user.uid);
@@ -65,20 +61,18 @@ export default function Home() {
   
   const { data: configData, isLoading: isConfigLoading } = useDoc<any>(configDocRef);
 
-  // Efeito principal de carregamento: Sincroniza o banco de dados com o estado local
   useEffect(() => {
-    // Só processa se o componente estiver montado, auth pronto e os dados do doc terminarem de carregar (incluindo null)
     if (!isMounted || isAuthLoading || isConfigLoading || !user || isConfigInitialized || !configDocRef) return;
 
-    // configData === undefined significa que o useDoc ainda está carregando
     if (configData !== undefined) {
+      let initialStyle = defaultBadgeStyle;
+      let initialBg = PlaceHolderImages.find(img => img.id === 'default-background')?.imageUrl || '';
+
       if (configData) {
-        // Encontrou design salvo na nuvem
         const savedStyle = configData.badgeStyle;
         const savedBackground = configData.fundoCrachaUrl || "";
         
-        // Merge profundo para garantir que novos campos do sistema não quebrem o design antigo
-        const mergedStyle = {
+        initialStyle = {
           ...defaultBadgeStyle,
           ...savedStyle,
           photo: { ...defaultBadgeStyle.photo, ...(savedStyle?.photo || {}) },
@@ -86,62 +80,41 @@ export default function Home() {
           turma: { ...defaultBadgeStyle.turma, ...(savedStyle?.turma || {}) },
           customFields: savedStyle?.customFields || [],
         };
-        
-        setBadgeStyle(mergedStyle);
-        setBackground(savedBackground);
-        
-        // Registra o estado carregado como o último estado salvo
-        lastSavedStateRef.current = JSON.stringify({ style: mergedStyle, bg: savedBackground });
-      } else {
-        // Não existe design na nuvem (primeiro acesso), carrega padrões
-        const defaultBg = PlaceHolderImages.find(img => img.id === 'default-background')?.imageUrl || '';
-        setBackground(defaultBg);
-        setBadgeStyle(defaultBadgeStyle);
-        lastSavedStateRef.current = JSON.stringify({ style: defaultBadgeStyle, bg: defaultBg });
+        initialBg = savedBackground || initialBg;
       }
-      // Marca como inicializado para permitir o uso da UI e detecção de mudanças
+      
+      setBadgeStyle(initialStyle);
+      setBackground(initialBg);
+      lastSavedStateRef.current = JSON.stringify({ style: initialStyle, bg: initialBg });
       setIsConfigInitialized(true);
     }
   }, [configData, isConfigLoading, isAuthLoading, user, isMounted, isConfigInitialized, configDocRef]);
 
-  // Detector de mudanças não salvas: Compara o estado atual com a Ref do banco de dados
   useEffect(() => {
     if (!isConfigInitialized) return;
     const currentState = JSON.stringify({ style: badgeStyle, bg: background });
     setHasUnsavedChanges(currentState !== lastSavedStateRef.current);
   }, [badgeStyle, background, isConfigInitialized]);
 
-  // Função manual para salvar o design no banco de dados
-  const saveDesign = async () => {
+  const saveDesign = () => {
     if (!configDocRef || !user) return;
     
     setIsSavingConfig(true);
     const currentState = { style: badgeStyle, bg: background };
     
-    try {
-      // Usa setDocument com merge para garantir que o doc seja criado ou atualizado
-      setDocumentNonBlocking(configDocRef, { 
-        badgeStyle: currentState.style, 
-        fundoCrachaUrl: currentState.bg 
-      }, { merge: true });
-      
-      // Atualiza a referência de "salvo" para o novo estado
-      lastSavedStateRef.current = JSON.stringify(currentState);
-      setHasUnsavedChanges(false);
-      
-      toast({ 
-        title: "Design salvo na nuvem!", 
-        description: "Seu layout foi sincronizado com sucesso." 
-      });
-    } catch (error) {
-      toast({ 
-        variant: "destructive", 
-        title: "Falha ao sincronizar", 
-        description: "Verifique sua internet e tente novamente." 
-      });
-    } finally {
-      setIsSavingConfig(false);
-    }
+    setDocumentNonBlocking(configDocRef, { 
+      badgeStyle: currentState.style, 
+      fundoCrachaUrl: currentState.bg 
+    }, { merge: true });
+    
+    lastSavedStateRef.current = JSON.stringify(currentState);
+    setHasUnsavedChanges(false);
+    setIsSavingConfig(false);
+    
+    toast({ 
+      title: "Design salvo na nuvem!", 
+      description: "Seu layout foi sincronizado com sucesso." 
+    });
   };
 
   const addStudent = (student: Omit<Student, "id">) => {
@@ -204,7 +177,6 @@ export default function Home() {
     }
   };
   
-  // Estado de carregamento global da aplicação (crítico para evitar sobrescritas)
   const isSyncing = !isMounted || isAuthLoading || (user && (!isConfigInitialized || isConfigLoading));
 
   return (
@@ -216,7 +188,7 @@ export default function Home() {
                 <Loader2 className="animate-spin h-16 w-16 text-primary" />
                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
                   <div className="flex items-center gap-2 font-medium">
-                    <RefreshCw className="h-5 w-5 animate-reverse-spin" />
+                    <RefreshCw className="h-5 w-5 animate-spin" />
                     <span>Sincronizando com Cloud Firestore...</span>
                   </div>
                   <p className="text-sm opacity-70">Recuperando seu design personalizado</p>
