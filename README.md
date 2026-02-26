@@ -1,4 +1,4 @@
-# Crachá Inteligente 🎓
+# Crach-Inteligente 🎓
 
 Sistema avançado para criação, gestão e geração de crachás estudantis personalizados. Este projeto permite o design dinâmico de crachás, importação em massa via Excel e exportação precisa para PDF (layout A4 com 8 crachás).
 
@@ -19,21 +19,19 @@ Sistema avançado para criação, gestão e geração de crachás estudantis per
 
 ## 📦 Como Publicar no GitHub
 
-Para subir este código para o seu próprio repositório, execute estes comandos no terminal:
+Para subir este código para o seu repositório, execute estes comandos no seu terminal:
 
-1. Crie um repositório vazio no GitHub.
-2. No terminal, execute:
+1. No terminal, execute:
 
 ```bash
 git init
 git add .
 git commit -m "Initial commit: Crachá Inteligente completo"
 git branch -M main
-git remote add origin https://github.com/SEU_USUARIO/NOME_DO_REPOSITORIO.git
+git remote add origin https://github.com/TICVM/Crach-Inteligente.git
 git push -u origin main
 ```
 
 ## 📄 Licença
 
 Este projeto foi desenvolvido utilizando o Firebase Studio.
-# Crach-Inteligente
