@@ -61,7 +61,7 @@ export const generatePdf = async (
 
     const pxToMm = badgeWidth / BADGE_BASE_WIDTH;
     
-    const renderTextOnPdf = (text: string, style: TextStyle, badgeX: number, badgeY: number) => {
+    const renderTextOnPdf = (text: string, style: TextStyle, badgeX: number, badgeY: number, manualOffsetPx: number = 0) => {
         if (!text || !style) return;
 
         const boxX = badgeX + (style.x || 0) * pxToMm;
@@ -93,7 +93,7 @@ export const generatePdf = async (
         if(textColorRgb) pdf.setTextColor(textColorRgb.r, textColorRgb.g, textColorRgb.b);
         pdf.setFont('helvetica', style.fontWeight === 'bold' ? 'bold' : 'normal');
 
-        // Calibração do tamanho da fonte (CSS para PDF reduzido para paridade visual)
+        // Calibração do tamanho da fonte
         let fontSizeMm = (style.fontSize || 24) * pxToMm * 0.82;
         let pdfFontSizePt = fontSizeMm / 0.3527; 
         pdf.setFontSize(pdfFontSizePt);
@@ -101,7 +101,7 @@ export const generatePdf = async (
         // 3. Verificação de Transbordo (Auto-Scaling)
         const hOffset = (style.paddingLeft || 0) * pxToMm;
         const vOffset = (style.paddingTop || 0) * pxToMm;
-        const maxWidth = boxW - Math.abs(hOffset) - 2; // Margem de segurança
+        const maxWidth = boxW - Math.abs(hOffset) - 2;
 
         let currentTextWidth = pdf.getTextWidth(String(text));
         while (currentTextWidth > maxWidth && pdfFontSizePt > 6) {
@@ -125,10 +125,8 @@ export const generatePdf = async (
         }
 
         // 5. Alinhamento Vertical Preciso
-        // O jsPDF com baseline 'middle' centraliza na linha de base.
-        // Adicionamos o ajuste proporcional e os 5px extras solicitados.
         const verticalVisualAdjustment = (pdfFontSizePt * 0.3527) * 0.15;
-        const additionalManualOffset = 5 * pxToMm; // Descer os 5px extras solicitados
+        const additionalManualOffset = manualOffsetPx * pxToMm; 
         const drawY = boxY + vOffset + (boxH - vOffset) / 2 + verticalVisualAdjustment + additionalManualOffset;
 
         try {
@@ -197,13 +195,14 @@ export const generatePdf = async (
           }
         }
 
-        renderTextOnPdf(student.nome, currentStyle.name, x, y);
-        renderTextOnPdf(student.turma, currentStyle.turma, x, y);
+        // Aplicação dos offsets solicitados: Nome (+7px) e Turma (0px)
+        renderTextOnPdf(student.nome, currentStyle.name, x, y, 7);
+        renderTextOnPdf(student.turma, currentStyle.turma, x, y, 0);
         
         if (currentStyle.customFields) {
             currentStyle.customFields.forEach(field => {
                 const val = student.customData?.[field.id];
-                if (val) renderTextOnPdf(val, field, x, y);
+                if (val) renderTextOnPdf(val, field, x, y, 0);
             });
         }
     }
