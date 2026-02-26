@@ -4,11 +4,11 @@ Sistema avançado para criação, gestão e geração de crachás estudantis per
 
 ## 🚀 Funcionalidades Principais
 
-- **Editor de Design**: Ajuste posições, cores, tamanhos de fonte e fundos em tempo real.
-- **Importação em Massa**: Envie uma planilha Excel (.xlsx) e as fotos dos alunos para gerar dezenas de crachás instantaneamente.
-- **Gestão de Alunos**: Busca por nome, filtros por turma e controle de quem deve ser incluído na impressão (Ativos/Inativos).
-- **Exportação Profissional**: Geração de PDF calibrado para papel A4 (2 colunas x 4 linhas).
-- **Persistência na Nuvem**: Sincronização automática com Firebase Firestore.
+- **Editor de Design**: Ajuste posições, cores, tamanhos de fonte e fundos em tempo real com preview instantâneo.
+- **Importação em Massa**: Envie uma planilha Excel (.xlsx) e as fotos dos alunos para gerar dezenas de crachás de uma só vez.
+- **Gestão Inteligente**: Busca por nome, filtros por turma e controle individual de quem deve ser incluído na impressão (Ativos/Inativos).
+- **Exportação Profissional**: Geração de PDF calibrado para papel A4 (2 colunas x 4 linhas) com ajustes milimétricos de fonte e alinhamento.
+- **Persistência na Nuvem**: Sincronização automática com Firebase Firestore para que você nunca perca seus dados ou modelos de design.
 
 ## 🛠️ Tecnologias Utilizadas
 
@@ -21,29 +21,29 @@ Sistema avançado para criação, gestão e geração de crachás estudantis per
 
 Para subir todo o código para o seu repositório, abra o **Terminal** no editor e execute estes comandos:
 
-1. Inicie o git e prepare os arquivos:
+1. **Inicie o git e prepare todos os arquivos:**
 ```bash
 git init
 git add .
-git commit -m "Initial commit: Crachá Inteligente completo"
+git commit -m "Initial commit: Sistema Crachá Inteligente completo"
 ```
 
-2. Conecte ao seu repositório (se der erro de "remote origin already exists", use o comando do passo 3):
+2. **Conecte ao seu repositório remoto:**
 ```bash
 git branch -M main
 git remote add origin https://github.com/TICVM/Crach-Inteligente.git
 ```
 
-3. **Caso o comando acima falhe** (se você já tinha tentado antes):
+3. **Caso o comando acima falhe** (se você já tiver configurado o remote antes):
 ```bash
 git remote set-url origin https://github.com/TICVM/Crach-Inteligente.git
 ```
 
-4. Envie os arquivos:
+4. **Envie os arquivos para o GitHub:**
 ```bash
 git push -u origin main
 ```
 
 ## 📄 Licença
 
-Este projeto foi desenvolvido utilizando o Firebase Studio.
+Este projeto foi desenvolvido utilizando o Firebase Studio como um protótipo funcional de alta fidelidade.
