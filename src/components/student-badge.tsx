@@ -12,40 +12,42 @@ const BADGE_BASE_WIDTH = 1063;
 const BADGE_BASE_HEIGHT = 768;
 
 function hexToRgb(hex: string) {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '#000000');
   return result
     ? {
         r: parseInt(result[1], 16),
         g: parseInt(result[2], 16),
         b: parseInt(result[3], 16),
       }
-    : null;
+    : { r: 0, g: 0, b: 0 };
 }
 
 export default function StudentBadge({ student, background, styles }: StudentBadgeProps) {
   
   const renderText = (text: string, style: TextStyle) => {
+    if (!style) return null;
     const rgb = hexToRgb(style.backgroundColor);
-    const rgba = rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${style.backgroundOpacity})` : 'transparent';
+    const opacity = typeof style.backgroundOpacity === 'number' ? style.backgroundOpacity : 0;
+    const rgba = rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})` : 'transparent';
     
-    const scaledFontSize = `${(style.fontSize / BADGE_BASE_HEIGHT) * 100}cqh`;
-    const paddingTop = `${(style.paddingTop / BADGE_BASE_HEIGHT) * 100}cqh`;
-    const paddingLeft = `${(style.paddingLeft / BADGE_BASE_WIDTH) * 100}cqw`;
+    const scaledFontSize = `${((style.fontSize || 24) / BADGE_BASE_HEIGHT) * 100}cqh`;
+    const paddingTop = `${((style.paddingTop || 0) / BADGE_BASE_HEIGHT) * 100}cqh`;
+    const paddingLeft = `${((style.paddingLeft || 0) / BADGE_BASE_WIDTH) * 100}cqw`;
     
     return (
       <div
         className="absolute flex items-center overflow-hidden"
         style={{
-          left: `${(style.x / BADGE_BASE_WIDTH) * 100}%`,
-          top: `${(style.y / BADGE_BASE_HEIGHT) * 100}%`,
-          width: `${(style.width / BADGE_BASE_WIDTH) * 100}%`,
-          height: `${(style.height / BADGE_BASE_HEIGHT) * 100}%`,
+          left: `${((style.x || 0) / BADGE_BASE_WIDTH) * 100}%`,
+          top: `${((style.y || 0) / BADGE_BASE_HEIGHT) * 100}%`,
+          width: `${((style.width || 100) / BADGE_BASE_WIDTH) * 100}%`,
+          height: `${((style.height || 40) / BADGE_BASE_HEIGHT) * 100}%`,
           fontSize: scaledFontSize,
-          color: style.color,
-          fontWeight: style.fontWeight,
-          textAlign: style.textAlign,
+          color: style.color || '#000000',
+          fontWeight: style.fontWeight || 'normal',
+          textAlign: style.textAlign || 'left',
           backgroundColor: rgba,
-          borderRadius: `${(style.backgroundRadius / BADGE_BASE_WIDTH) * 100}cqw`,
+          borderRadius: `${((style.backgroundRadius || 0) / BADGE_BASE_WIDTH) * 100}cqw`,
           padding: '0 0.3em',
           paddingTop: paddingTop,
           paddingLeft: paddingLeft,
@@ -59,28 +61,30 @@ export default function StudentBadge({ student, background, styles }: StudentBad
     );
   };
 
+  const photoStyles = styles?.photo || { x: 0, y: 0, width: 100, height: 100, borderRadius: 0 };
+
   const photoStyle: React.CSSProperties = {
-    left: `${(styles.photo.x / BADGE_BASE_WIDTH) * 100}%`,
-    top: `${(styles.photo.y / BADGE_BASE_HEIGHT) * 100}%`,
-    width: `${(styles.photo.width / BADGE_BASE_WIDTH) * 100}%`,
-    height: `${(styles.photo.height / BADGE_BASE_HEIGHT) * 100}%`,
-    borderRadius: `${(styles.photo.borderRadius / BADGE_BASE_WIDTH) * 100}cqw`,
+    left: `${(photoStyles.x / BADGE_BASE_WIDTH) * 100}%`,
+    top: `${(photoStyles.y / BADGE_BASE_HEIGHT) * 100}%`,
+    width: `${(photoStyles.width / BADGE_BASE_WIDTH) * 100}%`,
+    height: `${(photoStyles.height / BADGE_BASE_HEIGHT) * 100}%`,
+    borderRadius: `${(photoStyles.borderRadius / BADGE_BASE_WIDTH) * 100}cqw`,
     boxSizing: 'border-box',
     zIndex: 10,
     overflow: 'hidden',
     position: 'absolute'
   };
 
-  if (styles.photo.hasBorder && styles.photo.borderWidth > 0) {
-    const borderColorRgb = hexToRgb(styles.photo.borderColor);
+  if (photoStyles.hasBorder && (photoStyles.borderWidth || 0) > 0) {
+    const borderColorRgb = hexToRgb(photoStyles.borderColor);
     const borderColorRgba = borderColorRgb
-      ? `rgba(${borderColorRgb.r}, ${borderColorRgb.g}, ${borderColorRgb.b}, ${styles.photo.borderOpacity})`
+      ? `rgba(${borderColorRgb.r}, ${borderColorRgb.g}, ${borderColorRgb.b}, ${photoStyles.borderOpacity || 1})`
       : 'transparent';
     
-    photoStyle.border = `${(styles.photo.borderWidth / BADGE_BASE_WIDTH) * 100}cqw solid ${borderColorRgba}`;
+    photoStyle.border = `${(photoStyles.borderWidth / BADGE_BASE_WIDTH) * 100}cqw solid ${borderColorRgba}`;
   }
 
-  const badgeRadius = `${(styles.badgeRadius / BADGE_BASE_WIDTH) * 100}cqw`;
+  const badgeRadius = `${((styles?.badgeRadius || 0) / BADGE_BASE_WIDTH) * 100}cqw`;
 
   return (
     <div
@@ -114,10 +118,10 @@ export default function StudentBadge({ student, background, styles }: StudentBad
           )}
         </div>
 
-        {renderText(student.nome, styles.name)}
-        {renderText(student.turma, styles.turma)}
+        {renderText(student.nome, styles?.name)}
+        {renderText(student.turma, styles?.turma)}
         
-        {styles.customFields.map((field) => {
+        {styles?.customFields?.map((field) => {
             const value = student.customData?.[field.id];
             if (!value) return null;
             return (

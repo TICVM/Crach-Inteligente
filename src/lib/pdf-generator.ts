@@ -19,20 +19,19 @@ async function toDataURL(url: string): Promise<string> {
         });
     } catch (error) {
         console.error(`Erro ao converter imagem para DataURL: ${url}`, error);
-        // Fallback para uma imagem vazia ou placeholder se falhar
         return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
     }
 }
 
 function hexToRgb(hex: string) {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '#000000');
     return result
       ? {
           r: parseInt(result[1], 16),
           g: parseInt(result[2], 16),
           b: parseInt(result[3], 16),
         }
-      : null;
+      : { r: 0, g: 0, b: 0 };
 }
 
 export const generatePdf = async (
@@ -43,14 +42,13 @@ export const generatePdf = async (
 ) => {
     const a4 = { width: 210, height: 297 };
     const badgesPerLine = 2;
-    const badgesPerColumn = 3; // Alterado para 3 (total 6 por página)
+    const badgesPerColumn = 3; 
     const totalPerPage = badgesPerLine * badgesPerColumn;
     const marginX = 10;
     const marginY = 15;
     const gapX = 10;
     const gapY = 10;
 
-    // Calcula largura do crachá para caber 2 por linha com gap
     const badgeWidth = (a4.width - marginX * 2 - gapX) / badgesPerLine;
     const badgeHeight = badgeWidth * (BADGE_BASE_HEIGHT / BADGE_BASE_WIDTH);
 
@@ -64,17 +62,21 @@ export const generatePdf = async (
     const pxToMmY = badgeHeight / BADGE_BASE_HEIGHT;
     
     const renderTextOnPdf = (text: string, style: TextStyle, x: number, y: number) => {
+        if (!text) return;
+
         const bgRgb = hexToRgb(style.backgroundColor);
-        if (bgRgb && style.backgroundOpacity > 0) {
+        const bgOpacity = typeof style.backgroundOpacity === 'number' ? style.backgroundOpacity : 0;
+        
+        if (bgRgb && bgOpacity > 0) {
             pdf.setFillColor(bgRgb.r, bgRgb.g, bgRgb.b);
-            pdf.setGState(new (pdf as any).GState({ opacity: style.backgroundOpacity }));
+            pdf.setGState(new (pdf as any).GState({ opacity: bgOpacity }));
             pdf.roundedRect(
-                x + style.x * pxToMmX, 
-                y + style.y * pxToMmY, 
-                style.width * pxToMmX, 
-                style.height * pxToMmY, 
-                style.backgroundRadius * pxToMmX, 
-                style.backgroundRadius * pxToMmY, 
+                x + (style.x || 0) * pxToMmX, 
+                y + (style.y || 0) * pxToMmY, 
+                (style.width || 100) * pxToMmX, 
+                (style.height || 40) * pxToMmY, 
+                (style.backgroundRadius || 0) * pxToMmX, 
+                (style.backgroundRadius || 0) * pxToMmY, 
                 'F'
             );
             pdf.setGState(new (pdf as any).GState({ opacity: 1 }));
@@ -85,28 +87,30 @@ export const generatePdf = async (
           pdf.setTextColor(textColorRgb.r, textColorRgb.g, textColorRgb.b);
         }
 
-        const fontSizeMm = style.fontSize * pxToMmY;
+        const fontSizeMm = (style.fontSize || 24) * pxToMmY;
         const pdfFontSizePt = fontSizeMm * 2.83465;
         
         pdf.setFontSize(pdfFontSizePt);
         pdf.setFont('helvetica', style.fontWeight === 'bold' ? 'bold' : 'normal');
         
         const textPaddingX = 2 * pxToMmX;
+        const horizontalOffset = (style.paddingLeft || 0) * pxToMmX;
+        const verticalOffset = (style.paddingTop || 0) * pxToMmY;
         
-        // Deslocamento horizontal e vertical customizado
-        const horizontalOffset = style.paddingLeft * pxToMmX;
-        const verticalOffset = style.paddingTop * pxToMmY;
-        
-        const textX = x + style.x * pxToMmX + (style.textAlign === 'center' ? style.width * pxToMmX / 2 : style.textAlign === 'right' ? style.width * pxToMmX - textPaddingX : textPaddingX) + horizontalOffset;
-        const textY = y + (style.y + style.height / 2) * pxToMmY + (fontSizeMm * 0.3) + verticalOffset;
+        const textX = x + (style.x || 0) * pxToMmX + (style.textAlign === 'center' ? (style.width || 0) * pxToMmX / 2 : style.textAlign === 'right' ? (style.width || 0) * pxToMmX - textPaddingX : textPaddingX) + horizontalOffset;
+        const textY = y + ((style.y || 0) + (style.height || 0) / 2) * pxToMmY + (fontSizeMm * 0.3) + verticalOffset;
+
+        // Garante que as coordenadas sejam números válidos
+        const safeX = isNaN(textX) ? x : textX;
+        const safeY = isNaN(textY) ? y : textY;
 
         pdf.text(
-            text,
-            textX,
-            textY,
+            String(text),
+            safeX,
+            safeY,
             { 
-              maxWidth: style.width * pxToMmX - (textPaddingX * 2), 
-              align: style.textAlign as any,
+              maxWidth: (style.width || 100) * pxToMmX - (textPaddingX * 2), 
+              align: (style.textAlign || 'left') as any,
               baseline: 'middle'
             }
         );
@@ -131,7 +135,6 @@ export const generatePdf = async (
         const currentBackground = studentModel?.fundoCrachaUrl || fallbackBackground;
         const currentStyle = studentModel?.badgeStyle || fallbackStyle;
 
-        // 1. Adiciona o Fundo
         try {
             if (!backgroundCache[currentBackground]) {
                 backgroundCache[currentBackground] = await toDataURL(currentBackground);
@@ -141,47 +144,47 @@ export const generatePdf = async (
             console.error("Erro ao adicionar fundo no PDF", e);
         }
 
-        // 2. Adiciona a Foto
         if (student.fotoUrl) {
           try {
             const studentPhotoDataUrl = await toDataURL(student.fotoUrl);
             pdf.addImage(
                 studentPhotoDataUrl, 'JPEG', 
-                x + currentStyle.photo.x * pxToMmX, 
-                y + currentStyle.photo.y * pxToMmY, 
-                currentStyle.photo.width * pxToMmX, 
-                currentStyle.photo.height * pxToMmY
+                x + (currentStyle.photo.x || 0) * pxToMmX, 
+                y + (currentStyle.photo.y || 0) * pxToMmY, 
+                (currentStyle.photo.width || 100) * pxToMmX, 
+                (currentStyle.photo.height || 100) * pxToMmY
             );
           } catch (e) {
             console.error("Erro na foto do aluno no PDF:", student.nome, e);
           }
         }
 
-        // 3. Desenha a borda da foto
-        if (currentStyle.photo.hasBorder && currentStyle.photo.borderWidth > 0) {
+        if (currentStyle.photo.hasBorder && (currentStyle.photo.borderWidth || 0) > 0) {
             const borderColorRgb = hexToRgb(currentStyle.photo.borderColor);
             if (borderColorRgb) {
                 pdf.setDrawColor(borderColorRgb.r, borderColorRgb.g, borderColorRgb.b);
-                pdf.setLineWidth(currentStyle.photo.borderWidth * pxToMmX);
-                const rx = currentStyle.photo.borderRadius * pxToMmX;
-                const ry = currentStyle.photo.borderRadius * pxToMmY;
+                pdf.setLineWidth((currentStyle.photo.borderWidth || 1) * pxToMmX);
+                const rx = (currentStyle.photo.borderRadius || 0) * pxToMmX;
+                const ry = (currentStyle.photo.borderRadius || 0) * pxToMmY;
                 pdf.roundedRect(
-                    x + currentStyle.photo.x * pxToMmX, 
-                    y + currentStyle.photo.y * pxToMmY, 
-                    currentStyle.photo.width * pxToMmX, 
-                    currentStyle.photo.height * pxToMmY,
+                    x + (currentStyle.photo.x || 0) * pxToMmX, 
+                    y + (currentStyle.photo.y || 0) * pxToMmY, 
+                    (currentStyle.photo.width || 100) * pxToMmX, 
+                    (currentStyle.photo.height || 100) * pxToMmY,
                     rx, ry, 'S'
                 );
             }
         }
 
-        // 4. Adiciona os Elementos de Texto
         renderTextOnPdf(student.nome, currentStyle.name, x, y);
         renderTextOnPdf(student.turma, currentStyle.turma, x, y);
-        currentStyle.customFields.forEach(field => {
-            const value = student.customData?.[field.id];
-            if (value) renderTextOnPdf(value, field, x, y);
-        });
+        
+        if (currentStyle.customFields) {
+            currentStyle.customFields.forEach(field => {
+                const value = student.customData?.[field.id];
+                if (value) renderTextOnPdf(value, field, x, y);
+            });
+        }
     }
     
     pdf.save('crachas-gerados.pdf');
