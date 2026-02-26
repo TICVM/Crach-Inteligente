@@ -1,112 +1,29 @@
-/**
- * # Firestore Security Rules
- *
- * ## Core Philosophy
- * This ruleset implements a strict Role-Based Access Control (RBAC) model.
- * A dedicated `/roles_admin` collection is used to define users with administrative
- * privileges. Only these administrators are permitted to perform write operations
- * (create, update, delete) on the core application data, which includes the
- * `/alunos` and `/configuracaoCracha` collections.
- *
- * ## Data Structure
- * - `/alunos/{alunoId}`: A top-level collection storing data for each student.
- * - `/configuracaoCracha/{configuracaoId}`: A top-level collection for global
- *   badge generation settings, typically holding a single document (e.g., 'global').
- * - `/roles_admin/{uid}`: A special collection where the existence of a document
- *   whose ID matches a user's UID grants that user administrator privileges. This
- *   collection is not client-writable.
- *
- * ## Key Security Decisions
- * - **Admin-Only Writes**: All data creation and modification is strictly limited
- *   to authenticated users who are defined as administrators in the `/roles_admin`
- *   collection.
- * - **Restricted Student Data**: All student information in the `/alunos` collection
- *   is private. Only administrators can read, list, or modify this data.
- * - **Public Configuration**: The global badge configuration (`/configuracaoCracha`)
- *   is publicly readable. This allows any client, authenticated or not, to fetch
- *   the necessary settings (like a background image) to render badges, without
- *   exposing any sensitive data.
- * - **No Client-Side Role Management**: The `/roles_admin` collection is locked down
- *   to prevent any client from elevating their own or another user's privileges.
- *   Admin roles must be managed securely through the Firebase Console or a trusted
- *   backend server using the Admin SDK.
- *
- * ## Denormalization for Authorization
- * The use of the `/roles_admin/{uid}` collection is a deliberate denormalization
- * strategy. It allows for a fast and efficient `exists()` check within the security
- * rules to determine a user's role without needing to read other documents,
- * ensuring performant and scalable authorization checks.
- *
- * ## Structural Segregation
- * The data is segregated into distinct top-level collections based on its security
- * posture. Private data (`/alunos`) is kept separate from public data
- * (`/configuracaoCracha`), which simplifies rule logic and enables efficient,
- * secure queries.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // -------------------------------------------------------------------------
-    // Helper Functions
-    // -------------------------------------------------------------------------
-
-    /**
-     * Checks if the user is authenticated.
-     */
+    
+    // Função auxiliar para verificar se o usuário está logado (incluindo anônimo)
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * Checks if the currently authenticated user has an admin role.
-     * This is determined by the existence of a document in the /roles_admin
-     * collection with an ID matching the user's UID.
-     */
-    function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
-    }
-
-    // -------------------------------------------------------------------------
-    // Collection Rules
-    // -------------------------------------------------------------------------
-
-    /**
-     * @description Secures the 'alunos' collection. For this app, any signed-in user can manage student data.
-     *              This allows any user of the app to add, edit, and delete students.
-     * @path        /alunos/{alunoId}
-     * @allow       (read, write) Any authenticated user can manage student data.
-     * @principle   Open access for authenticated users to facilitate easy collaboration in this specific tool.
-     */
+    // Regras para a coleção de alunos
     match /alunos/{alunoId} {
+      // Exige que o usuário esteja logado para ler ou escrever dados dos alunos
       allow read, write: if isSignedIn();
     }
 
-    /**
-     * @description Secures the global badge configuration. For this app, any signed-in user can manage the configuration.
-     * @path        /configuracaoCracha/{configuracaoId}
-     * @allow       (read, write) Any authenticated user can manage the global badge style configuration.
-     * @principle   Open access for authenticated users to facilitate easy collaboration in this specific tool.
-     */
+    // Regras para a configuração global do crachá
     match /configuracaoCracha/{configuracaoId} {
-      allow read, write: if isSignedIn();
+      // Leitura é pública para permitir que o design carregue rapidamente
+      allow read: if true;
+      // Escrita exige autenticação
+      allow write: if isSignedIn();
     }
-
-    /**
-     * @description Secures the admin roles collection.
-     *              This collection is used as a lookup table by the security rules
-     *              and MUST NOT be modifiable by any client.
-     * @path        /roles_admin/{uid}
-     * @allow       (read/write) No client operation is ever permitted.
-     * @deny        (create) A user attempts to make themselves an admin: `create /roles_admin/their_uid`
-     * @principle   Prevents privilege escalation by locking down role-defining data from client access.
-     */
-    match /roles_admin/{uid} {
-      allow get: if false;
-      allow list: if false;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+    
+    // Bloqueia qualquer outro acesso por padrão
+    match /{path=**} {
+      allow read, write: if false;
     }
   }
 }

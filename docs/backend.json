@@ -1,30 +1,25 @@
 {
   "entities": {
     "Aluno": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Aluno",
       "type": "object",
       "description": "Representa um aluno registrado no sistema, contendo seus dados pessoais e de identificação para o crachá.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Identificador único para a entidade Aluno gerado pelo Firestore."
-        },
         "nome": {
           "type": "string",
-          "description": "Nome completo do aluno a ser exibido no crachá."
+          "description": "Nome completo do aluno."
         },
         "turma": {
           "type": "string",
-          "description": "Turma ou classe à qual o aluno pertence, exibida no crachá."
+          "description": "Turma ou classe do aluno."
         },
         "fotoUrl": {
           "type": "string",
-          "description": "URL de dados (Data URL) da imagem de perfil do aluno."
+          "description": "URL de dados (Base64) da imagem de perfil."
         },
         "customData": {
           "type": "object",
-          "description": "Objeto para armazenar campos e valores personalizados definidos pelo usuário (ex: Matrícula, Validade)."
+          "description": "Campos personalizados (Matrícula, Validade, etc.)."
         }
       },
       "required": [
@@ -34,87 +29,38 @@
       ]
     },
     "ConfiguracaoCracha": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ConfiguracaoCracha",
       "type": "object",
-      "description": "Armazena configurações globais para a geração de crachás, como o fundo personalizado e os estilos dos elementos.",
+      "description": "Configurações globais de design do crachá.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Identificador único para a entidade ConfiguracaoCracha. Recomenda-se um ID fixo (ex: 'globalConfig') já que há apenas uma configuração global."
-        },
         "fundoCrachaUrl": {
           "type": "string",
-          "description": "URL ou identificador da imagem personalizada usada como fundo dos crachás."
-        },
-        "nomeFundoAtual": {
-          "type": "string",
-          "description": "Nome do arquivo da imagem de fundo atual, para exibição na interface do usuário."
+          "description": "URL da imagem de fundo."
         },
         "badgeStyle": {
           "type": "object",
-          "description": "Objeto contendo todas as configurações de estilo do crachá (posições, cores, fontes, etc.)."
+          "description": "Estilos de posicionamento, cores e fontes."
         }
       }
     }
   },
   "auth": {
     "providers": [
-      "password",
       "anonymous"
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/alunos/{alunoId}",
-        "definition": {
-          "entityName": "Aluno",
-          "schema": {
-            "$ref": "#/backend/entities/Aluno"
-          },
-          "description": "Armazena dados de cada aluno. Acesso de leitura e escrita é permitido para qualquer usuário autenticado anonimamente.",
-          "params": [
-            {
-              "name": "alunoId",
-              "description": "Identificador único do aluno, usado como ID do documento."
-            }
-          ]
-        }
+    "/alunos/{alunoId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Aluno"
       },
-      {
-        "path": "/configuracaoCracha/{configuracaoId}",
-        "definition": {
-          "entityName": "ConfiguracaoCracha",
-          "schema": {
-            "$ref": "#/backend/entities/ConfiguracaoCracha"
-          },
-          "description": "Armazena configurações globais para a geração de crachás. Acesso de escrita é restrito a administradores. Acesso de leitura é público.",
-          "params": [
-            {
-              "name": "configuracaoId",
-              "description": "Identificador único para a configuração do crachá. Recomenda-se um ID fixo como 'global'."
-            }
-          ]
-        }
+      "description": "Coleção de alunos. Acesso permitido para usuários autenticados."
+    },
+    "/configuracaoCracha/{configuracaoId}": {
+      "schema": {
+        "$ref": "#/backend/entities/ConfiguracaoCracha"
       },
-      {
-        "path": "/roles_admin/{uid}",
-        "definition": {
-          "entityName": "roles_admin",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Coleção para definir administradores do sistema. A existência de um documento com o UID de um usuário aqui confere a ele a role de administrador.",
-          "params": [
-            {
-              "name": "uid",
-              "description": "O Firebase Auth UID do usuário que possui a role de administrador."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "A estrutura foi atualizada para usar o Firestore como banco de dados principal. A coleção `/alunos` agora armazena os dados dos estudantes, com regras de segurança que permitem que qualquer usuário autenticado (via autenticação anônima) leia e escreva dados. Isso facilita o uso da aplicação sem a necessidade de um sistema de login complexo, ao mesmo tempo que protege o banco de dados de acesso não autenticado. As outras coleções mantêm suas regras originais para configurações e roles de administrador."
+      "description": "Configuração global do crachá. Leitura pública, escrita autenticada."
+    }
   }
 }
