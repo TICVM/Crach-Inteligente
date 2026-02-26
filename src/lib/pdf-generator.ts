@@ -94,8 +94,9 @@ export const generatePdf = async (
           pdf.setTextColor(textColorRgb.r, textColorRgb.g, textColorRgb.b);
         }
 
+        // Calibragem do tamanho da fonte para paridade com o navegador (fator 0.95 para peso óptico)
         const fontSizeMm = (style.fontSize || 24) * pxToMmY;
-        const pdfFontSizePt = fontSizeMm * 2.83465;
+        const pdfFontSizePt = fontSizeMm * 2.83465 * 0.95; 
         
         pdf.setFontSize(pdfFontSizePt);
         pdf.setFont('helvetica', style.fontWeight === 'bold' ? 'bold' : 'normal');
@@ -103,9 +104,9 @@ export const generatePdf = async (
         const horizontalOffset = (style.paddingLeft || 0) * pxToMmX;
         const verticalOffset = (style.paddingTop || 0) * pxToMmY;
         
-        // Área útil após o padding (Simulando comportamento Flexbox do CSS)
-        const availableWidth = boxW - horizontalOffset;
-        const availableHeight = boxH - verticalOffset;
+        // Área útil após o padding (Replica comportamento Flexbox/CSS)
+        const availableWidth = boxW - Math.abs(horizontalOffset);
+        const availableHeight = boxH - Math.abs(verticalOffset);
 
         // Cálculo do X de ancoragem
         let textX = boxX + horizontalOffset;
@@ -115,11 +116,9 @@ export const generatePdf = async (
             textX = boxX + horizontalOffset + availableWidth;
         }
 
-        // Cálculo do Y de ancoragem
-        // Usamos baseline 'middle', então miramos no centro da área útil restante
+        // Cálculo do Y de ancoragem (Centralização vertical exata na área útil)
         const textY = boxY + verticalOffset + (availableHeight / 2);
 
-        // Proteção contra valores inválidos
         const safeX = isFinite(textX) ? textX : x;
         const safeY = isFinite(textY) ? textY : y;
         const safeWidth = isFinite(availableWidth) && availableWidth > 0 ? availableWidth : 1;
