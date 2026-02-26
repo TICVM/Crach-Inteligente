@@ -180,12 +180,10 @@ export default function Home() {
 
   const handlePrint = () => {
     setIsPrinting(true);
-    document.body.classList.add("print-mode");
     setTimeout(() => {
       window.print();
-      document.body.classList.remove("print-mode");
       setIsPrinting(false);
-    }, 700);
+    }, 500);
   };
 
   const nextPreview = () => setPreviewIndex((prev) => (prev + 1) % (students.length || 1));
@@ -203,7 +201,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <PageHeader />
-      <main className="container mx-auto p-4 md:p-8">
+      <main className="container mx-auto p-4 md:p-8 no-print">
         {isLoading ? (
             <div className="flex flex-col justify-center items-center h-96 gap-4">
                 <Loader2 className="animate-spin h-12 w-12 text-primary" />
@@ -325,26 +323,26 @@ export default function Home() {
               </div>
             </div>
         )}
-
-        {/* Área de Impressão Oculta */}
-        <div id="printable-area" className="hidden">
-           <div className="print-container">
-            {students.map((student) => {
-                const studentModel = models.find(m => m.id === student.modeloId) || activeModel;
-                return (
-                  <div key={`print-${student.id}`} className="print-item">
-                      <StudentBadge 
-                        student={student} 
-                        background={studentModel?.fundoCrachaUrl || liveBackground} 
-                        styles={studentModel?.badgeStyle || liveStyle} 
-                      />
-                  </div>
-                );
-            })}
-           </div>
-        </div>
       </main>
       
+      {/* Área de Impressão (Gerada fora do fluxo principal para evitar erros de layout) */}
+      <div id="printable-area">
+          <div className="print-grid">
+          {students.map((student) => {
+              const studentModel = models.find(m => m.id === student.modeloId) || activeModel;
+              return (
+                <div key={`print-${student.id}`} className="print-item">
+                    <StudentBadge 
+                      student={student} 
+                      background={studentModel?.fundoCrachaUrl || liveBackground} 
+                      styles={studentModel?.badgeStyle || liveStyle} 
+                    />
+                </div>
+              );
+          })}
+          </div>
+      </div>
+
       {isMounted && (
         <footer className="text-center py-8 text-muted-foreground text-[10px] no-print border-t mt-8 uppercase tracking-widest font-bold">
           <p>&copy; {new Date().getFullYear()} Crachá Inteligente • Sistema de Identificação Estudantil</p>

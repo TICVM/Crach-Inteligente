@@ -45,10 +45,10 @@ export const generatePdf = async (
     const badgesPerLine = 2;
     const badgesPerColumn = 4;
     const totalPerPage = badgesPerLine * badgesPerColumn;
-    const marginX = 8;
-    const marginY = 8;
-    const gapX = 4;
-    const gapY = 4;
+    const marginX = 10;
+    const marginY = 10;
+    const gapX = 5;
+    const gapY = 5;
 
     const badgeWidth = (a4.width - marginX * 2 - gapX * (badgesPerLine - 1)) / badgesPerLine;
     const badgeHeight = badgeWidth * (BADGE_BASE_HEIGHT / BADGE_BASE_WIDTH);
@@ -66,8 +66,6 @@ export const generatePdf = async (
         const bgRgb = hexToRgb(style.backgroundColor);
         if (bgRgb && style.backgroundOpacity > 0) {
             pdf.setFillColor(bgRgb.r, bgRgb.g, bgRgb.b);
-            // jsPDF doesn't handle transparency well in roundedRect directly easily without plugins,
-            // but we'll use a simplified version for high quality print.
             pdf.roundedRect(
                 x + style.x * pxToMmX, 
                 y + style.y * pxToMmY, 
@@ -84,15 +82,15 @@ export const generatePdf = async (
           pdf.setTextColor(textColorRgb.r, textColorRgb.g, textColorRgb.b);
         }
 
-        // Calibrated font size: 1pt = 0.3527mm. 
-        // We scale the visual pixel size to mm and convert to points for jsPDF
-        const pdfFontSizePt = (style.fontSize * pxToMmX) * 2.83465;
+        // Calibração de fonte: Convertemos o tamanho visual para pontos tipográficos
+        // 1 pt ≈ 0.3527 mm. 
+        const pdfFontSizePt = (style.fontSize * pxToMmY) * 2.83465;
         pdf.setFontSize(pdfFontSizePt);
         pdf.setFont('helvetica', style.fontWeight);
         
         const textPaddingX = 2 * pxToMmX;
         const textX = x + style.x * pxToMmX + (style.textAlign === 'center' ? style.width * pxToMmX / 2 : style.textAlign === 'right' ? style.width * pxToMmX - textPaddingX : textPaddingX);
-        const textY = y + (style.y + style.height / 2) * pxToMmY;
+        const textY = y + (style.y + style.height / 2) * pxToMmY + (pdfFontSizePt * 0.15); // Pequeno ajuste de baseline
 
         pdf.text(
             text,
@@ -100,8 +98,8 @@ export const generatePdf = async (
             textY,
             { 
               maxWidth: style.width * pxToMmX - (textPaddingX * 2), 
-              align: style.textAlign as any, 
-              baseline: 'middle' 
+              align: style.textAlign as any,
+              baseline: 'middle'
             }
         );
     };

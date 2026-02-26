@@ -28,28 +28,30 @@ export default function StudentBadge({ student, background, styles }: StudentBad
     const rgb = hexToRgb(style.backgroundColor);
     const rgba = rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${style.backgroundOpacity})` : 'transparent';
     
-    const scaledFontSize = `${(style.fontSize / BADGE_BASE_WIDTH) * 100}cqw`;
+    // Usamos porcentagem para manter a escala em qualquer tamanho de container, inclusive na impressão
+    const scaledFontSize = `${(style.fontSize / BADGE_BASE_HEIGHT) * 100}%`;
     
     return (
       <div
-        className="absolute flex items-center"
+        className="absolute flex items-center overflow-hidden"
         style={{
           left: `${(style.x / BADGE_BASE_WIDTH) * 100}%`,
           top: `${(style.y / BADGE_BASE_HEIGHT) * 100}%`,
           width: `${(style.width / BADGE_BASE_WIDTH) * 100}%`,
           height: `${(style.height / BADGE_BASE_HEIGHT) * 100}%`,
-          fontSize: `clamp(1px, ${scaledFontSize}, 200px)`,
+          fontSize: scaledFontSize,
           color: style.color,
           fontWeight: style.fontWeight,
           textAlign: style.textAlign,
           backgroundColor: rgba,
-          borderRadius: `${style.backgroundRadius}px`,
-          padding: '0 0.5em',
+          borderRadius: `${(style.backgroundRadius / BADGE_BASE_WIDTH) * 100}cqw`,
+          padding: '0 0.2em',
           justifyContent: style.textAlign === 'center' ? 'center' : style.textAlign === 'right' ? 'flex-end' : 'flex-start',
-          zIndex: 20
+          zIndex: 20,
+          lineHeight: 1
         }}
       >
-        <span className="truncate w-full">{text}</span>
+        <span className="truncate w-full leading-tight">{text}</span>
       </div>
     );
   };
@@ -59,7 +61,7 @@ export default function StudentBadge({ student, background, styles }: StudentBad
     top: `${(styles.photo.y / BADGE_BASE_HEIGHT) * 100}%`,
     width: `${(styles.photo.width / BADGE_BASE_WIDTH) * 100}%`,
     height: `${(styles.photo.height / BADGE_BASE_HEIGHT) * 100}%`,
-    borderRadius: `${styles.photo.borderRadius}px`,
+    borderRadius: `${(styles.photo.borderRadius / BADGE_BASE_WIDTH) * 100}cqw`,
     boxSizing: 'border-box',
     zIndex: 10,
     overflow: 'hidden',
@@ -77,23 +79,24 @@ export default function StudentBadge({ student, background, styles }: StudentBad
 
   return (
     <div
-      className="relative aspect-[1063/768] w-full overflow-hidden rounded-xl shadow-xl bg-card border [container-type:size]"
+      className="relative aspect-[1063/768] w-full overflow-hidden bg-white shadow-md [container-type:size]"
       data-ai-hint="crachá estudante"
     >
-      {/* Background Image - Real img for print reliability */}
+      {/* Background Image - Tag IMG real para garantir renderização na impressão */}
       <div className="absolute inset-0 z-0">
         {background && (
           <Image 
             src={background} 
-            alt="Badge Background" 
+            alt="Fundo do Crachá" 
             fill 
             className="object-cover" 
             priority
+            unoptimized
           />
         )}
       </div>
 
-      <div className="absolute inset-0 z-10">
+      <div className="absolute inset-0 z-10 pointer-events-none">
         <div style={photoStyle}>
           {student.fotoUrl && (
             <Image
