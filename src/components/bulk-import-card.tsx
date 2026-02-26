@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { type Student } from '@/lib/types';
 import { Upload, Loader2 } from 'lucide-react';
+import { compressImage } from '@/lib/image-utils';
 
 interface BulkImportCardProps {
   onImport: (students: Omit<Student, 'id'>[]) => void;
@@ -56,7 +57,6 @@ export default function BulkImportCard({ onImport }: BulkImportCardProps) {
         return;
       }
       
-      const newStudents: Omit<Student, 'id'>[] = [];
       const promises = studentData.map((row, index) => {
         const nome = row[0]?.toString().trim();
         const turma = row[1]?.toString().trim();
@@ -66,9 +66,15 @@ export default function BulkImportCard({ onImport }: BulkImportCardProps) {
         
         return new Promise<Omit<Student, 'id'>>((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = (e) => {
-                const fotoUrl = e.target?.result as string;
-                resolve({ nome, turma, fotoUrl });
+            reader.onload = async (e) => {
+                const rawFotoUrl = e.target?.result as string;
+                try {
+                  // Otimiza cada foto durante a importação em massa
+                  const optimizedFoto = await compressImage(rawFotoUrl);
+                  resolve({ nome, turma, fotoUrl: optimizedFoto });
+                } catch (err) {
+                  reject(err);
+                }
             };
             reader.onerror = reject;
             reader.readAsDataURL(photoFile);

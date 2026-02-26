@@ -33,12 +33,13 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Loader2 } from 'lucide-react';
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Input } from './ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
+import { compressImage } from '@/lib/image-utils';
 
 interface StudentListProps {
   students: Student[];
@@ -50,6 +51,7 @@ interface StudentListProps {
 export default function StudentList({ students, onUpdate, onDelete, badgeStyle }: StudentListProps) {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const formSchema = React.useMemo(() => {
     const customFieldsSchema = badgeStyle.customFields.reduce((acc, field) => {
@@ -88,31 +90,41 @@ export default function StudentList({ students, onUpdate, onDelete, badgeStyle }
     setIsDialogOpen(true);
   };
 
-  const onSubmit: SubmitHandler<FormValues> = (data) => {
+  const onSubmit: SubmitHandler<FormValues> = async (data) => {
     if (!editingStudent) return;
+    setIsSubmitting(true);
     
-    const { nome, turma, fotoUrl, ...customDataValues } = data;
-    const customData = Object.entries(customDataValues).reduce((acc, [key, value]) => {
-        if (value) {
-            acc[key] = value as string;
-        }
-        return acc;
-    }, {} as { [key: string]: string });
-    
-    const file = data.fotoUrl?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const photoDataUrl = e.target?.result as string;
-        onUpdate({ ...editingStudent, nome: data.nome, turma: data.turma, fotoUrl: photoDataUrl, customData });
+    try {
+      const { nome, turma, fotoUrl, ...customDataValues } = data;
+      const customData = Object.entries(customDataValues).reduce((acc, [key, value]) => {
+          if (value) {
+              acc[key] = value as string;
+          }
+          return acc;
+      }, {} as { [key: string]: string });
+      
+      const file = data.fotoUrl?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const rawPhotoDataUrl = e.target?.result as string;
+          // Otimiza a nova foto selecionada
+          const optimizedPhoto = await compressImage(rawPhotoDataUrl);
+          onUpdate({ ...editingStudent, nome: data.nome, turma: data.turma, fotoUrl: optimizedPhoto, customData });
+          setIsDialogOpen(false);
+          setEditingStudent(null);
+          setIsSubmitting(false);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        onUpdate({ ...editingStudent, nome: data.nome, turma: data.turma, customData });
         setIsDialogOpen(false);
         setEditingStudent(null);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      onUpdate({ ...editingStudent, nome: data.nome, turma: data.turma, customData });
-      setIsDialogOpen(false);
-      setEditingStudent(null);
+        setIsSubmitting(false);
+      }
+    } catch (error) {
+      console.error(error);
+      setIsSubmitting(false);
     }
   };
 
@@ -157,7 +169,7 @@ export default function StudentList({ students, onUpdate, onDelete, badgeStyle }
                       <AlertDialogHeader>
                         <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Esta ação não pode ser desfeita. Isso removerá permanentemente os dados do aluno.
+                          Esta ação não pode ser desfeita. Isso removerá permanentemente os dados do aluno do banco de dados.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -239,7 +251,10 @@ export default function StudentList({ students, onUpdate, onDelete, badgeStyle }
                     <DialogClose asChild>
                     <Button type="button" variant="secondary">Cancelar</Button>
                     </DialogClose>
-                    <Button type="submit">Salvar Alterações</Button>
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : null}
+                      Salvar Alterações
+                    </Button>
                 </DialogFooter>
                 </form>
             </Form>

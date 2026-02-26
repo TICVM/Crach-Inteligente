@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { UserPlus, Loader2 } from "lucide-react";
 import React from "react";
 import { type BadgeStyleConfig } from "@/lib/badge-styles";
-
+import { compressImage } from "@/lib/image-utils";
 
 interface AddStudentCardProps {
   onAddStudent: (student: Omit<Student, "id">) => void;
@@ -62,20 +62,29 @@ export default function AddStudentCard({ onAddStudent, badgeStyle }: AddStudentC
       }, {} as { [key: string]: string });
 
       const reader = new FileReader();
-      reader.onload = (e) => {
-        const photoDataUrl = e.target?.result as string;
-        onAddStudent({ nome, turma, fotoUrl: photoDataUrl, customData });
-        form.reset();
-        // Manually reset custom fields as well
-        const defaultCustomValues: {[key: string]: string} = {};
-        badgeStyle.customFields.forEach(f => defaultCustomValues[f.id] = '');
-        form.reset({
-            nome: "",
-            turma: "",
-            fotoUrl: undefined,
-            ...defaultCustomValues,
-        });
-
+      reader.onload = async (e) => {
+        const rawPhotoDataUrl = e.target?.result as string;
+        try {
+          // Otimiza a imagem antes de salvar para evitar erros de URL/Tamanho
+          const optimizedPhoto = await compressImage(rawPhotoDataUrl);
+          onAddStudent({ nome, turma, fotoUrl: optimizedPhoto, customData });
+          
+          // Reseta o formulário
+          const defaultCustomValues: {[key: string]: string} = {};
+          badgeStyle.customFields.forEach(f => defaultCustomValues[f.id] = '');
+          form.reset({
+              nome: "",
+              turma: "",
+              fotoUrl: undefined,
+              ...defaultCustomValues,
+          });
+        } catch (error) {
+          toast({
+            variant: "destructive",
+            title: "Erro no Processamento",
+            description: "Não foi possível otimizar a foto.",
+          });
+        }
       };
       reader.onerror = () => {
         toast({
