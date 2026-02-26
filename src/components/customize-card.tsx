@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useRef, type ChangeEvent } from 'react';
+import React, { useState, useRef, useEffect, type ChangeEvent } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,20 +9,18 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Wand2, Trash2, PlusCircle, Loader2, Save, AlertCircle } from 'lucide-react';
+import { Wand2, Trash2, PlusCircle, Loader2, Save, Plus, Palette } from 'lucide-react';
 import NextImage from 'next/image';
-import { type BadgeStyleConfig, type CustomField, type TextStyle, type PhotoStyle } from '@/lib/badge-styles';
+import { type BadgeStyleConfig, type CustomField, type TextStyle, type PhotoStyle, defaultBadgeStyle } from '@/lib/badge-styles';
+import { type BadgeModel } from '@/lib/types';
 import { Switch } from '@/components/ui/switch';
 import { compressImage } from '@/lib/image-utils';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 interface CustomizeCardProps {
-  currentBackground: string;
-  onSetBackground: (dataUrl: string) => void;
-  badgeStyle: BadgeStyleConfig;
-  onStyleChange: (style: BadgeStyleConfig) => void;
-  onSave: () => void;
-  isSaving: boolean;
-  hasUnsavedChanges: boolean;
+  activeModel: BadgeModel | null;
+  onSaveModel: (name: string, background: string, style: BadgeStyleConfig) => void;
+  onReset: () => void;
 }
 
 const safeParseInt = (val: string): number => {
@@ -34,13 +32,7 @@ const StyleInput = ({ label, value, onChange, unit = 'px', ...props }: { label: 
   <div className="grid grid-cols-2 items-center gap-2">
     <Label className="text-xs">{label}</Label>
     <div className="flex items-center gap-1">
-      <Input 
-        type="number" 
-        value={isNaN(value) || value === undefined ? "" : value} 
-        onChange={onChange} 
-        className="h-8 w-20" 
-        {...props} 
-      />
+      <Input type="number" value={isNaN(value) ? 0 : value} onChange={onChange} className="h-8 w-20" {...props} />
       <span className="text-xs text-muted-foreground">{unit}</span>
     </div>
   </div>
@@ -60,18 +52,25 @@ const OpacitySlider = ({ label, value, onChange }: { label: string, value: numbe
     </div>
 );
 
-export default function CustomizeCard({ 
-  currentBackground, 
-  onSetBackground, 
-  badgeStyle, 
-  onStyleChange,
-  onSave,
-  isSaving,
-  hasUnsavedChanges
-}: CustomizeCardProps) {
-  const [isOptimizing, setIsOptimizing] = React.useState(false);
+export default function CustomizeCard({ activeModel, onSaveModel, onReset }: CustomizeCardProps) {
+  const [modelName, setModelName] = useState("");
+  const [background, setBackground] = useState("");
+  const [badgeStyle, setBadgeStyle] = useState<BadgeStyleConfig>(defaultBadgeStyle);
+  const [isOptimizing, setIsOptimizing] = useState(false);
   const backgroundFileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (activeModel) {
+      setModelName(activeModel.nomeModelo);
+      setBackground(activeModel.fundoCrachaUrl);
+      setBadgeStyle(activeModel.badgeStyle);
+    } else {
+      setModelName("");
+      setBackground(PlaceHolderImages.find(img => img.id === 'default-background')?.imageUrl || "");
+      setBadgeStyle(defaultBadgeStyle);
+    }
+  }, [activeModel]);
 
   const handleBackgroundChange = () => {
     const file = backgroundFileRef.current?.files?.[0];
@@ -83,24 +82,18 @@ export default function CustomizeCard({
       const rawDataUrl = e.target?.result as string;
       try {
         const optimizedBackground = await compressImage(rawDataUrl, 1063, 768, 0.7);
-        onSetBackground(optimizedBackground);
-        toast({ title: 'Fundo alterado!', description: 'Não esqueça de salvar o design para persistir na nuvem.' });
+        setBackground(optimizedBackground);
       } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Erro na otimização",
-          description: "Não foi possível processar a imagem de fundo.",
-        });
+        toast({ variant: "destructive", title: "Erro na imagem" });
       } finally {
         setIsOptimizing(false);
-        if (backgroundFileRef.current) backgroundFileRef.current.value = "";
       }
     };
     reader.readAsDataURL(file);
   };
 
   const handleStyleChange = (section: keyof BadgeStyleConfig, key: keyof (PhotoStyle | TextStyle), value: any) => {
-    onStyleChange({
+    setBadgeStyle({
       ...badgeStyle,
       [section]: {
         // @ts-ignore
@@ -111,7 +104,7 @@ export default function CustomizeCard({
   };
 
   const handleCustomFieldChange = (id: string, key: keyof CustomField, value: any) => {
-      onStyleChange({
+      setBadgeStyle({
         ...badgeStyle,
         customFields: badgeStyle.customFields.map(field => 
             field.id === id ? { ...field, [key]: value } : field
@@ -135,22 +128,16 @@ export default function CustomizeCard({
           backgroundOpacity: 0,
           backgroundRadius: 6,
       };
-      onStyleChange({
-        ...badgeStyle,
-        customFields: [...badgeStyle.customFields, newField]
-      });
+      setBadgeStyle({ ...badgeStyle, customFields: [...badgeStyle.customFields, newField] });
   };
 
   const removeCustomField = (id: string) => {
-      onStyleChange({
-        ...badgeStyle,
-        customFields: badgeStyle.customFields.filter(field => field.id !== id)
-      });
+      setBadgeStyle({ ...badgeStyle, customFields: badgeStyle.customFields.filter(field => field.id !== id) });
   };
   
   const renderTextControls = (field: 'name' | 'turma', title: string) => (
     <AccordionItem value={field}>
-      <AccordionTrigger className="text-base">{title}</AccordionTrigger>
+      <AccordionTrigger className="text-sm font-medium">{title}</AccordionTrigger>
       <AccordionContent className="space-y-3 p-1">
         <StyleInput label="Posição X" value={badgeStyle[field].x} onChange={(e) => handleStyleChange(field, 'x', safeParseInt(e.target.value))} />
         <StyleInput label="Posição Y" value={badgeStyle[field].y} onChange={(e) => handleStyleChange(field, 'y', safeParseInt(e.target.value))} />
@@ -166,139 +153,87 @@ export default function CustomizeCard({
   );
 
   return (
-    <Card className="border-2">
+    <Card className="shadow-lg border-2">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-primary">
-          <Wand2 />
-          Personalização do Crachá
-        </CardTitle>
-        <CardDescription>Ajuste o visual dos crachás.</CardDescription>
+        <div className="flex justify-between items-center">
+            <CardTitle className="flex items-center gap-2 text-primary">
+                <Palette size={20}/> Editor de Design
+            </CardTitle>
+            {activeModel && (
+                <Button variant="ghost" size="sm" onClick={onReset} className="h-8 gap-1">
+                    <Plus size={14}/> Novo
+                </Button>
+            )}
+        </div>
+        <CardDescription>Ajuste visual do crachá selecionado.</CardDescription>
       </CardHeader>
-      <CardContent>
-        <Accordion type="multiple" className="w-full" defaultValue={["background"]}>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+            <Label className="text-xs font-bold uppercase text-muted-foreground">Nome do Modelo</Label>
+            <Input 
+                placeholder="Ex: Padrão 2024" 
+                value={modelName} 
+                onChange={(e) => setModelName(e.target.value)}
+                className="font-medium"
+            />
+        </div>
+
+        <Accordion type="multiple" className="w-full">
           <AccordionItem value="background">
-            <AccordionTrigger className="text-base">Fundo do Crachá</AccordionTrigger>
+            <AccordionTrigger className="text-sm font-medium">Fundo do Crachá</AccordionTrigger>
             <AccordionContent>
-                <div className="space-y-2 pt-2">
-                    <div className="flex items-center gap-4">
-                        <div className="w-20 h-14 relative rounded-md overflow-hidden border bg-muted flex items-center justify-center">
-                            {currentBackground ? (
-                              <NextImage src={currentBackground} alt="Fundo atual" fill className="object-cover" />
-                            ) : (
-                              <span className="text-[10px] text-muted-foreground text-center px-1">Sem Fundo</span>
-                            )}
-                        </div>
-                        <div className="flex-1">
-                            <div className="relative">
-                              <Input 
-                                type="file" 
-                                accept="image/*" 
-                                ref={backgroundFileRef} 
-                                onChange={handleBackgroundChange} 
-                                disabled={isOptimizing}
-                                className={isOptimizing ? "opacity-50" : ""}
-                              />
-                              {isOptimizing && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-background/50 rounded-md">
-                                  <Loader2 className="h-4 w-4 animate-spin text-primary mr-2" />
-                                  <span className="text-xs font-medium">Processando...</span>
-                                </div>
-                              )}
-                            </div>
-                        </div>
+                <div className="flex items-center gap-4 pt-2">
+                    <div className="w-16 h-12 relative rounded border overflow-hidden bg-muted flex-shrink-0">
+                        {background ? <NextImage src={background} alt="BG" fill className="object-cover" /> : null}
+                    </div>
+                    <div className="flex-1">
+                        <Input type="file" accept="image/*" ref={backgroundFileRef} onChange={handleBackgroundChange} disabled={isOptimizing} className="h-8 text-[10px]" />
                     </div>
                 </div>
             </AccordionContent>
           </AccordionItem>
 
           <AccordionItem value="photo">
-            <AccordionTrigger className="text-base">Foto do Aluno</AccordionTrigger>
+            <AccordionTrigger className="text-sm font-medium">Foto do Aluno</AccordionTrigger>
             <AccordionContent className="space-y-3 p-1">
               <StyleInput label="Posição X" value={badgeStyle.photo.x} onChange={(e) => handleStyleChange('photo', 'x', safeParseInt(e.target.value))} />
               <StyleInput label="Posição Y" value={badgeStyle.photo.y} onChange={(e) => handleStyleChange('photo', 'y', safeParseInt(e.target.value))} />
               <StyleInput label="Largura" value={badgeStyle.photo.width} onChange={(e) => handleStyleChange('photo', 'width', safeParseInt(e.target.value))} />
               <StyleInput label="Altura" value={badgeStyle.photo.height} onChange={(e) => handleStyleChange('photo', 'height', safeParseInt(e.target.value))} />
               <StyleInput label="Arredondamento" value={badgeStyle.photo.borderRadius} onChange={(e) => handleStyleChange('photo', 'borderRadius', safeParseInt(e.target.value))} />
-              <div className="border-t pt-3 mt-3 space-y-3">
-                <div className="grid grid-cols-2 items-center gap-2">
-                  <Label className="text-xs">Borda</Label>
-                  <Switch
-                    checked={badgeStyle.photo.hasBorder}
-                    onCheckedChange={(checked) => handleStyleChange('photo', 'hasBorder', checked)}
-                  />
-                </div>
-                {badgeStyle.photo.hasBorder && (
-                  <>
-                    <StyleInput label="Largura da Borda" value={badgeStyle.photo.borderWidth} onChange={(e) => handleStyleChange('photo', 'borderWidth', safeParseInt(e.target.value))} />
-                    <ColorInput label="Cor da Borda" value={badgeStyle.photo.borderColor} onChange={(e) => handleStyleChange('photo', 'borderColor', e.target.value)} />
-                    <OpacitySlider label="Opacidade da Borda" value={badgeStyle.photo.borderOpacity} onChange={(val) => handleStyleChange('photo', 'borderOpacity', val[0])} />
-                  </>
-                )}
-              </div>
             </AccordionContent>
           </AccordionItem>
 
-          {renderTextControls('name', 'Campo: Nome')}
-          {renderTextControls('turma', 'Campo: Turma')}
+          {renderTextControls('name', 'Campo Nome')}
+          {renderTextControls('turma', 'Campo Turma')}
 
           <AccordionItem value="customFields">
-            <AccordionTrigger className="text-base">Campos Adicionais</AccordionTrigger>
-            <AccordionContent className="space-y-4 pt-4">
-              {badgeStyle.customFields.map((field, index) => (
-                <Accordion key={field.id} type="single" collapsible className="border rounded-md px-2">
-                   <AccordionItem value={`custom-${index}`} >
-                    <AccordionTrigger className="text-sm py-2">
-                        <div className="flex justify-between w-full items-center pr-2">
-                            <span className="truncate">{field.label || "Novo Campo"}</span>
-                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); removeCustomField(field.id); }}>
-                                <Trash2 size={16}/>
-                            </Button>
-                        </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="space-y-3 p-1 border-t mt-2">
-                         <div className="grid grid-cols-2 items-center gap-2">
-                            <Label className="text-xs">Rótulo</Label>
-                            <Input value={field.label} onChange={(e) => handleCustomFieldChange(field.id, 'label', e.target.value)} className="h-8"/>
-                        </div>
-                        <StyleInput label="Posição X" value={field.x} onChange={(e) => handleCustomFieldChange(field.id, 'x', safeParseInt(e.target.value))} />
-                        <StyleInput label="Posição Y" value={field.y} onChange={(e) => handleCustomFieldChange(field.id, 'y', safeParseInt(e.target.value))} />
-                        <StyleInput label="Largura" value={field.width} onChange={(e) => handleCustomFieldChange(field.id, 'width', safeParseInt(e.target.value))} />
-                        <StyleInput label="Altura" value={field.height} onChange={(e) => handleCustomFieldChange(field.id, 'height', safeParseInt(e.target.value))} />
-                        <StyleInput label="Tam. Fonte" value={field.fontSize} onChange={(e) => handleCustomFieldChange(field.id, 'fontSize', safeParseInt(e.target.value))} />
-                        <ColorInput label="Cor da Fonte" value={field.color} onChange={(e) => handleCustomFieldChange(field.id, 'color', e.target.value)} />
-                        <ColorInput label="Cor do Fundo" value={field.backgroundColor} onChange={(e) => handleCustomFieldChange(field.id, 'backgroundColor', e.target.value)} />
-                        <OpacitySlider label="Opacidade Fundo" value={field.backgroundOpacity} onChange={(val) => handleCustomFieldChange(field.id, 'backgroundOpacity', val[0])} />
-                        <StyleInput label="Raio do Fundo" value={field.backgroundRadius} onChange={(e) => handleCustomFieldChange(field.id, 'backgroundRadius', safeParseInt(e.target.value))} />
-                    </AccordionContent>
-                   </AccordionItem>
-                </Accordion>
+            <AccordionTrigger className="text-sm font-medium">Campos Dinâmicos</AccordionTrigger>
+            <AccordionContent className="space-y-3 p-1">
+              {badgeStyle.customFields.map((field) => (
+                <div key={field.id} className="border p-2 rounded-md space-y-2">
+                    <div className="flex justify-between">
+                        <Input value={field.label} onChange={(e) => handleCustomFieldChange(field.id, 'label', e.target.value)} className="h-7 text-xs" />
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeCustomField(field.id)}><Trash2 size={12}/></Button>
+                    </div>
+                    <StyleInput label="Posição Y" value={field.y} onChange={(e) => handleCustomFieldChange(field.id, 'y', safeParseInt(e.target.value))} />
+                </div>
               ))}
                <Button onClick={addCustomField} className="w-full mt-2" variant="outline" size="sm">
-                <PlusCircle size={14} className="mr-2"/> Adicionar Novo Campo
+                <PlusCircle size={14} className="mr-2"/> Add Campo
               </Button>
             </AccordionContent>
           </AccordionItem>
         </Accordion>
       </CardContent>
-      <CardFooter className="flex flex-col gap-2 border-t pt-4 bg-muted/30">
-        {hasUnsavedChanges && (
-          <div className="flex items-center gap-2 text-xs text-amber-600 font-medium mb-1">
-            <AlertCircle size={14} />
-            Você tem alterações não salvas.
-          </div>
-        )}
+      <CardFooter className="bg-muted/30 pt-4 flex flex-col gap-2">
         <Button 
-          className="w-full shadow-md" 
-          onClick={onSave} 
-          disabled={isSaving || !hasUnsavedChanges}
-          variant={hasUnsavedChanges ? "default" : "secondary"}
+          className="w-full gap-2" 
+          onClick={() => onSaveModel(modelName, background, badgeStyle)}
+          disabled={!modelName}
         >
-          {isSaving ? (
-            <Loader2 className="animate-spin mr-2" />
-          ) : (
-            <Save className="mr-2" />
-          )}
-          Salvar Design na Nuvem
+          {isOptimizing ? <Loader2 className="animate-spin" size={16}/> : <Save size={16}/>}
+          {activeModel ? "Atualizar Modelo" : "Salvar como Novo Modelo"}
         </Button>
       </CardFooter>
     </Card>

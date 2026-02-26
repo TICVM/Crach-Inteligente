@@ -3,26 +3,18 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Função auxiliar para verificar se o usuário está logado (incluindo anônimo)
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Regras para a coleção de alunos
     match /alunos/{alunoId} {
-      // Exige que o usuário esteja logado para ler ou escrever dados dos alunos
       allow read, write: if isSignedIn();
     }
 
-    // Regras para a configuração global do crachá
-    match /configuracaoCracha/{configuracaoId} {
-      // Leitura é pública para permitir que o design carregue rapidamente sem erros de permissão
-      allow read: if true;
-      // Escrita exige que o usuário esteja logado e seja o proprietário da configuração
-      allow write: if isSignedIn() && (request.auth.uid == configuracaoId);
+    match /modelosCracha/{modeloId} {
+      allow read, write: if isSignedIn();
     }
     
-    // Bloqueia qualquer outro acesso por padrão por segurança
     match /{path=**} {
       allow read, write: if false;
     }

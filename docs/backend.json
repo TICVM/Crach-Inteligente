@@ -9,18 +9,22 @@
         "nome": { "type": "string" },
         "turma": { "type": "string" },
         "fotoUrl": { "type": "string" },
-        "customData": { "type": "object" }
+        "customData": { "type": "object" },
+        "modeloId": { "type": "string" }
       },
       "required": ["nome", "turma", "fotoUrl"]
     },
-    "ConfiguracaoCracha": {
-      "title": "ConfiguracaoCracha",
+    "ModeloCracha": {
+      "title": "ModeloCracha",
       "type": "object",
-      "description": "Configurações de design do crachá.",
+      "description": "Configurações de design de um modelo de crachá.",
       "properties": {
+        "nomeModelo": { "type": "string" },
         "fundoCrachaUrl": { "type": "string" },
-        "badgeStyle": { "type": "object" }
-      }
+        "badgeStyle": { "type": "object" },
+        "userId": { "type": "string" }
+      },
+      "required": ["nomeModelo"]
     }
   },
   "auth": {
@@ -31,9 +35,9 @@
       "schema": { "$ref": "#/backend/entities/Aluno" },
       "description": "Coleção de alunos."
     },
-    "/configuracaoCracha/{userId}": {
-      "schema": { "$ref": "#/backend/entities/ConfiguracaoCracha" },
-      "description": "Design personalizado do usuário."
+    "/modelosCracha/{modeloId}": {
+      "schema": { "$ref": "#/backend/entities/ModeloCracha" },
+      "description": "Modelos de design de crachás salvos pelos usuários."
     }
   }
 }

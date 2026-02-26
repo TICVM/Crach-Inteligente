@@ -1,9 +1,9 @@
 
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { type Student } from "@/lib/types";
+import { type Student, type BadgeModel } from "@/lib/types";
 import { generatePdf } from "@/lib/pdf-generator";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import PageHeader from "@/components/page-header";
@@ -12,40 +12,34 @@ import BulkImportCard from "@/components/bulk-import-card";
 import CustomizeCard from "@/components/customize-card";
 import StudentList from "@/components/student-list";
 import StudentBadge from "@/components/student-badge";
+import ModelsListCard from "@/components/models-list-card";
 import { Button } from "@/components/ui/button";
 import { FileDown, Printer, Loader2, Cloud, RefreshCw } from "lucide-react";
 import { type BadgeStyleConfig, defaultBadgeStyle } from "@/lib/badge-styles";
-import { useFirestore, useCollection, useDoc, useAuth, useMemoFirebase, useUser } from "@/firebase";
+import { useFirestore, useCollection, useAuth, useMemoFirebase, useUser } from "@/firebase";
 import { deleteDocumentNonBlocking, updateDocumentNonBlocking, setDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { collection, doc } from "firebase/firestore";
 import { signInAnonymously } from "firebase/auth";
 
 export default function Home() {
-  const [background, setBackground] = useState<string>("");
-  const [badgeStyle, setBadgeStyle] = useState<BadgeStyleConfig>(defaultBadgeStyle);
+  const [activeModel, setActiveModel] = useState<BadgeModel | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPdfLoading, setIsPdfLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const [isConfigInitialized, setIsConfigInitialized] = useState(false);
-  const [isSavingConfig, setIsSavingConfig] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   const { toast } = useToast();
   const firestore = useFirestore();
   const auth = useAuth();
   const { user, isUserLoading: isAuthLoading } = useUser();
-  
-  const lastSavedStateRef = useRef<string>("");
 
   useEffect(() => {
     setIsMounted(true);
     if (auth && !user && !isAuthLoading) {
-      signInAnonymously(auth).catch((error) => {
-        console.error("Erro na autenticação anônima:", error);
-      });
+      signInAnonymously(auth).catch((error) => console.error("Erro auth:", error));
     }
   }, [auth, user, isAuthLoading]);
 
+  // Coleção de Alunos
   const alunosCollection = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, 'alunos');
@@ -54,73 +48,29 @@ export default function Home() {
   const { data: studentsData, isLoading: studentsLoading } = useCollection<Student>(alunosCollection);
   const students = studentsData || [];
 
-  const configDocRef = useMemoFirebase(() => {
+  // Coleção de Modelos
+  const modelosCollection = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return doc(firestore, 'configuracaoCracha', user.uid);
+    return collection(firestore, 'modelosCracha');
   }, [firestore, user]);
-  
-  const { data: configData, isLoading: isConfigLoading } = useDoc<any>(configDocRef);
 
+  const { data: modelsData, isLoading: isModelsLoading } = useCollection<BadgeModel>(modelosCollection);
+  const models = modelsData || [];
+
+  // Seleciona um modelo padrão se não houver um ativo
   useEffect(() => {
-    if (!isMounted || isAuthLoading || isConfigLoading || !user || isConfigInitialized || !configDocRef) return;
-
-    if (configData !== undefined) {
-      let initialStyle = defaultBadgeStyle;
-      let initialBg = PlaceHolderImages.find(img => img.id === 'default-background')?.imageUrl || '';
-
-      if (configData) {
-        const savedStyle = configData.badgeStyle;
-        const savedBackground = configData.fundoCrachaUrl || "";
-        
-        initialStyle = {
-          ...defaultBadgeStyle,
-          ...savedStyle,
-          photo: { ...defaultBadgeStyle.photo, ...(savedStyle?.photo || {}) },
-          name: { ...defaultBadgeStyle.name, ...(savedStyle?.name || {}) },
-          turma: { ...defaultBadgeStyle.turma, ...(savedStyle?.turma || {}) },
-          customFields: savedStyle?.customFields || [],
-        };
-        initialBg = savedBackground || initialBg;
-      }
-      
-      setBadgeStyle(initialStyle);
-      setBackground(initialBg);
-      lastSavedStateRef.current = JSON.stringify({ style: initialStyle, bg: initialBg });
-      setIsConfigInitialized(true);
+    if (!activeModel && models.length > 0) {
+      setActiveModel(models[0]);
     }
-  }, [configData, isConfigLoading, isAuthLoading, user, isMounted, isConfigInitialized, configDocRef]);
-
-  useEffect(() => {
-    if (!isConfigInitialized) return;
-    const currentState = JSON.stringify({ style: badgeStyle, bg: background });
-    setHasUnsavedChanges(currentState !== lastSavedStateRef.current);
-  }, [badgeStyle, background, isConfigInitialized]);
-
-  const saveDesign = () => {
-    if (!configDocRef || !user) return;
-    
-    setIsSavingConfig(true);
-    const currentState = { style: badgeStyle, bg: background };
-    
-    setDocumentNonBlocking(configDocRef, { 
-      badgeStyle: currentState.style, 
-      fundoCrachaUrl: currentState.bg 
-    }, { merge: true });
-    
-    lastSavedStateRef.current = JSON.stringify(currentState);
-    setHasUnsavedChanges(false);
-    setIsSavingConfig(false);
-    
-    toast({ 
-      title: "Design salvo na nuvem!", 
-      description: "Seu layout foi sincronizado com sucesso." 
-    });
-  };
+  }, [models, activeModel]);
 
   const addStudent = (student: Omit<Student, "id">) => {
     if (!alunosCollection) return;
-    addDocumentNonBlocking(alunosCollection, student);
-    toast({ title: "Aluno adicionado!", description: "Dados salvos na nuvem." });
+    addDocumentNonBlocking(alunosCollection, {
+      ...student,
+      modeloId: activeModel?.id || ""
+    });
+    toast({ title: "Aluno adicionado!" });
   };
 
   const updateStudent = (updatedStudent: Student) => {
@@ -128,27 +78,66 @@ export default function Home() {
     const studentDocRef = doc(firestore, 'alunos', updatedStudent.id);
     const { id, ...dataToUpdate } = updatedStudent;
     updateDocumentNonBlocking(studentDocRef, dataToUpdate);
-    toast({ title: "Dados atualizados!", description: "Sincronizado com o banco de dados." });
   };
 
   const deleteStudent = (studentId: string) => {
     if (!firestore) return;
     const studentDocRef = doc(firestore, 'alunos', studentId);
     deleteDocumentNonBlocking(studentDocRef);
-    toast({ title: "Aluno removido." });
   };
 
   const handleBulkImport = (newStudents: Omit<Student, "id">[]) => {
      if (!alunosCollection) return;
      newStudents.forEach(student => {
-        addDocumentNonBlocking(alunosCollection, student);
+        addDocumentNonBlocking(alunosCollection, {
+          ...student,
+          modeloId: activeModel?.id || ""
+        });
      });
      toast({ title: "Importação concluída!", description: `${newStudents.length} alunos salvos.` });
   };
 
+  const handleSaveModel = (modelName: string, background: string, style: BadgeStyleConfig) => {
+    if (!modelosCollection || !user) return;
+    
+    if (activeModel?.id) {
+      const modelDocRef = doc(firestore!, 'modelosCracha', activeModel.id);
+      updateDocumentNonBlocking(modelDocRef, {
+        nomeModelo: modelName,
+        fundoCrachaUrl: background,
+        badgeStyle: style
+      });
+      toast({ title: "Modelo atualizado!" });
+    } else {
+      addDocumentNonBlocking(modelosCollection, {
+        nomeModelo: modelName,
+        fundoCrachaUrl: background,
+        badgeStyle: style,
+        userId: user.uid
+      }).then((docRef) => {
+        if (docRef) {
+          setActiveModel({ 
+            id: docRef.id, 
+            nomeModelo: modelName, 
+            fundoCrachaUrl: background, 
+            badgeStyle: style 
+          });
+        }
+      });
+      toast({ title: "Novo modelo criado!" });
+    }
+  };
+
+  const handleDeleteModel = (modelId: string) => {
+    if (!firestore) return;
+    deleteDocumentNonBlocking(doc(firestore, 'modelosCracha', modelId));
+    if (activeModel?.id === modelId) setActiveModel(null);
+    toast({ title: "Modelo removido." });
+  };
+
   const handlePrint = () => {
-    if (students.length === 0) {
-      toast({ variant: "destructive", title: "Atenção", description: "Adicione alunos para imprimir." });
+    if (students.length === 0 || !activeModel) {
+      toast({ variant: "destructive", title: "Atenção", description: "Adicione alunos e selecione um modelo para imprimir." });
       return;
     }
     setIsPrinting(true);
@@ -161,66 +150,64 @@ export default function Home() {
   };
   
   const handleGeneratePdf = async () => {
-    if (students.length === 0) {
-      toast({ variant: "destructive", title: "Atenção", description: "Adicione alunos para gerar o PDF." });
+    if (students.length === 0 || !activeModel) {
+      toast({ variant: "destructive", title: "Atenção", description: "Selecione um modelo e adicione alunos." });
       return;
     }
     setIsPdfLoading(true);
     try {
-      await generatePdf(students, background, badgeStyle);
-      toast({ title: "PDF gerado!", description: "O arquivo foi baixado em alta resolução." });
+      await generatePdf(students, activeModel.fundoCrachaUrl, activeModel.badgeStyle);
+      toast({ title: "PDF gerado com sucesso!" });
     } catch (error) {
-      console.error("Erro na geração do PDF:", error);
-      toast({ variant: "destructive", title: "Erro", description: "Falha ao processar as imagens do PDF." });
+      console.error(error);
+      toast({ variant: "destructive", title: "Erro no PDF" });
     } finally {
       setIsPdfLoading(false);
     }
   };
   
-  const isSyncing = !isMounted || isAuthLoading || (user && (!isConfigInitialized || isConfigLoading));
+  const isLoading = !isMounted || isAuthLoading || isModelsLoading;
 
   return (
     <div className="min-h-screen bg-background">
       <PageHeader />
       <main className="container mx-auto p-4 md:p-8">
-        {isSyncing ? (
-            <div className="flex flex-col justify-center items-center h-96 gap-6">
-                <Loader2 className="animate-spin h-16 w-16 text-primary" />
-                <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                  <div className="flex items-center gap-2 font-medium">
-                    <RefreshCw className="h-5 w-5 animate-spin" />
-                    <span>Sincronizando com Cloud Firestore...</span>
-                  </div>
-                  <p className="text-sm opacity-70">Recuperando seu design personalizado</p>
-                </div>
+        {isLoading ? (
+            <div className="flex flex-col justify-center items-center h-96 gap-4">
+                <Loader2 className="animate-spin h-12 w-12 text-primary" />
+                <p className="text-muted-foreground animate-pulse">Carregando seus modelos e alunos...</p>
             </div>
         ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-1 flex flex-col gap-8 no-print">
-                <CustomizeCard
-                  currentBackground={background}
-                  onSetBackground={setBackground}
-                  badgeStyle={badgeStyle}
-                  onStyleChange={setBadgeStyle}
-                  onSave={saveDesign}
-                  isSaving={isSavingConfig}
-                  hasUnsavedChanges={hasUnsavedChanges}
+                <ModelsListCard 
+                  models={models} 
+                  activeModelId={activeModel?.id} 
+                  onSelect={setActiveModel} 
+                  onDelete={handleDeleteModel} 
                 />
-                <AddStudentCard onAddStudent={addStudent} badgeStyle={badgeStyle} />
+                
+                <CustomizeCard
+                  activeModel={activeModel}
+                  onSaveModel={handleSaveModel}
+                  onReset={() => setActiveModel(null)}
+                />
+                
+                <AddStudentCard onAddStudent={addStudent} badgeStyle={activeModel?.badgeStyle || defaultBadgeStyle} />
                 <BulkImportCard onImport={handleBulkImport} />
               </div>
 
               <div className="lg:col-span-2 flex flex-col gap-8">
                 <div className="bg-card p-6 rounded-lg shadow-sm no-print border">
                   <h2 className="text-xl font-bold mb-4 text-primary flex items-center gap-2">
-                    Exportação Profissional
+                    Ações de Exportação
                   </h2>
                   <div className="flex flex-col sm:flex-row gap-4">
-                     <Button className="flex-1 shadow-md" onClick={handleGeneratePdf} disabled={isPdfLoading || students.length === 0}>
+                     <Button className="flex-1 shadow-md" onClick={handleGeneratePdf} disabled={isPdfLoading || !activeModel || students.length === 0}>
                       {isPdfLoading ? <Loader2 className="animate-spin mr-2" /> : <FileDown className="mr-2" />}
-                      Gerar PDF (Alta Resolução)
+                      Gerar PDF em Alta Definição
                     </Button>
-                    <Button variant="outline" className="flex-1" onClick={handlePrint} disabled={isPrinting || students.length === 0}>
+                    <Button variant="outline" className="flex-1" onClick={handlePrint} disabled={isPrinting || !activeModel || students.length === 0}>
                       <Printer className="mr-2" />
                       Imprimir Crachás
                     </Button>
@@ -229,37 +216,47 @@ export default function Home() {
 
                 <div className="bg-card p-6 rounded-lg shadow-sm border">
                     <div className="flex justify-between items-center mb-4">
-                      <h2 className="text-xl font-bold text-primary">Banco de Dados de Alunos</h2>
+                      <h2 className="text-xl font-bold text-primary">Banco de Alunos</h2>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
                         <Cloud className="h-3 w-3" />
-                        Tempo Real
+                        Sincronizado
                       </div>
                     </div>
                     {studentsLoading ? (
-                      <div className="flex flex-col items-center py-12 gap-4">
-                        <Loader2 className="animate-spin" />
-                        <span className="text-sm text-muted-foreground">Carregando registros...</span>
+                      <div className="flex flex-col items-center py-12">
+                        <Loader2 className="animate-spin mb-2" />
+                        <span className="text-sm text-muted-foreground">Carregando dados...</span>
                       </div>
                     ) : students.length > 0 ? (
-                      <StudentList students={students} onUpdate={updateStudent} onDelete={deleteStudent} badgeStyle={badgeStyle}/>
+                      <StudentList students={students} onUpdate={updateStudent} onDelete={deleteStudent} badgeStyle={activeModel?.badgeStyle || defaultBadgeStyle}/>
                     ) : (
                       <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed">
-                        O banco de dados está vazio. Registre alunos para começar.
+                        Nenhum aluno cadastrado para este lote.
                       </div>
                     )}
                 </div>
 
                 <div className="bg-card p-6 rounded-lg shadow-sm border no-print">
-                    <h2 className="text-xl font-bold mb-4 text-primary">Prévia do Design Sincronizado</h2>
-                    {students.length > 0 ? (
+                    <h2 className="text-xl font-bold mb-4 text-primary">Visualização do Modelo Selecionado</h2>
+                    {activeModel ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {students.slice(0, 4).map((student) => (
-                          <StudentBadge key={student.id} student={student} background={background} styles={badgeStyle} />
-                        ))}
+                        {students.length > 0 ? (
+                          students.slice(0, 4).map((student) => (
+                            <StudentBadge key={student.id} student={student} background={activeModel.fundoCrachaUrl} styles={activeModel.badgeStyle} />
+                          ))
+                        ) : (
+                          <div className="col-span-2">
+                            <StudentBadge 
+                              student={{ id: "preview", nome: "NOME DO ALUNO", turma: "TURMA 101", fotoUrl: PlaceHolderImages.find(i => i.id === 'avatar-placeholder')?.imageUrl || "" }} 
+                              background={activeModel.fundoCrachaUrl} 
+                              styles={activeModel.badgeStyle} 
+                            />
+                          </div>
+                        )}
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-12 bg-muted/10 rounded-lg border border-dashed">
-                         <p className="text-muted-foreground italic">Seu design aparecerá aqui após adicionar o primeiro aluno.</p>
+                      <div className="text-center py-12 text-muted-foreground italic border border-dashed rounded-lg">
+                        Selecione ou crie um modelo de design para ver a prévia.
                       </div>
                     )}
                 </div>
@@ -271,7 +268,11 @@ export default function Home() {
            <div className="print-container">
             {students.map((student) => (
                 <div key={`print-${student.id}`} className="print-item">
-                    <StudentBadge student={student} background={background} styles={badgeStyle} />
+                    <StudentBadge 
+                      student={student} 
+                      background={activeModel?.fundoCrachaUrl || ""} 
+                      styles={activeModel?.badgeStyle || defaultBadgeStyle} 
+                    />
                 </div>
             ))}
            </div>
@@ -280,7 +281,7 @@ export default function Home() {
       
       {isMounted && (
         <footer className="text-center py-8 text-muted-foreground text-sm no-print border-t mt-8">
-          <p>&copy; {new Date().getFullYear()} Crachá Inteligente &bull; Conectado ao Firebase Cloud Firestore</p>
+          <p>&copy; {new Date().getFullYear()} Crachá Inteligente &bull; Sistema de Modelos Dinâmicos</p>
         </footer>
       )}
     </div>
