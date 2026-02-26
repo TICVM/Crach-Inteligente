@@ -93,7 +93,7 @@ export const generatePdf = async (
         if(textColorRgb) pdf.setTextColor(textColorRgb.r, textColorRgb.g, textColorRgb.b);
         pdf.setFont('helvetica', style.fontWeight === 'bold' ? 'bold' : 'normal');
 
-        // Calibração do tamanho da fonte
+        // Calibração do tamanho da fonte (escala 0.8 para paridade com o navegador)
         let fontSizeMm = (style.fontSize || 24) * pxToMm * 0.82;
         let pdfFontSizePt = fontSizeMm / 0.3527; 
         pdf.setFontSize(pdfFontSizePt);
@@ -125,6 +125,7 @@ export const generatePdf = async (
         }
 
         // 5. Alinhamento Vertical Preciso
+        // Ajuste visual proporcional ao tamanho da fonte + offset manual solicitado
         const verticalVisualAdjustment = (pdfFontSizePt * 0.3527) * 0.15;
         const additionalManualOffset = manualOffsetPx * pxToMm; 
         const drawY = boxY + vOffset + (boxH - vOffset) / 2 + verticalVisualAdjustment + additionalManualOffset;
@@ -197,7 +198,13 @@ export const generatePdf = async (
 
         // Aplicação dos offsets solicitados: Nome (+7px) e Turma (0px)
         renderTextOnPdf(student.nome, currentStyle.name, x, y, 7);
-        renderTextOnPdf(student.turma, currentStyle.turma, x, y, 0);
+        
+        // Sincroniza o tamanho da fonte da Turma com o do Nome para o PDF conforme solicitado
+        const turmaStyleSincronizado = { 
+            ...currentStyle.turma, 
+            fontSize: currentStyle.name.fontSize 
+        };
+        renderTextOnPdf(student.turma, turmaStyleSincronizado, x, y, 0);
         
         if (currentStyle.customFields) {
             currentStyle.customFields.forEach(field => {
