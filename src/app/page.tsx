@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { 
   FileDown, Printer, Loader2, ChevronLeft, ChevronRight, LayoutGrid, List, 
   CheckSquare, Square, Users, FilterX, Settings2, Sparkles, PencilLine, 
-  ArrowRightLeft, Trash2, Eye, EyeOff, AlertTriangle 
+  ArrowRightLeft, Trash2, Eye, EyeOff, AlertTriangle, Search, Filter
 } from "lucide-react";
 import { type BadgeStyleConfig, defaultBadgeStyle } from "@/lib/badge-styles";
 import { useFirestore, useCollection, useAuth, useMemoFirebase, useUser } from "@/firebase";
@@ -51,6 +51,8 @@ export default function Home() {
   const [isListVisible, setIsListVisible] = useState(true);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [filterTurma, setFilterTurma] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showOnlyEnabled, setShowOnlyEnabled] = useState(false);
   const [bulkModelId, setBulkModelId] = useState<string>("default");
   const [bulkNewTurma, setBulkNewTurma] = useState<string>("");
   
@@ -91,13 +93,27 @@ export default function Home() {
     return Object.entries(stats).sort((a, b) => a[0].localeCompare(b[0]));
   }, [students]);
 
-  // Filtra alunos baseados na turma selecionada
+  // Filtra alunos baseados nos filtros ativos
   const filteredStudents = useMemo(() => {
-    if (!filterTurma) return students;
-    return students.filter(s => s.turma === filterTurma);
-  }, [students, filterTurma]);
+    let result = students;
 
-  // Filtra apenas os alunos habilitados para impressão
+    if (filterTurma) {
+      result = result.filter(s => s.turma === filterTurma);
+    }
+
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(s => s.nome.toLowerCase().includes(term));
+    }
+
+    if (showOnlyEnabled) {
+      result = result.filter(s => s.enabled !== false);
+    }
+
+    return result;
+  }, [students, filterTurma, searchTerm, showOnlyEnabled]);
+
+  // Filtra apenas os alunos habilitados para impressão (usado nas ações de PDF/Imprimir)
   const enabledStudents = students.filter(s => s.enabled !== false);
 
   useEffect(() => {
@@ -391,7 +407,7 @@ export default function Home() {
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div>
                           <h2 className="text-xl font-bold text-primary">Gestão de Alunos</h2>
-                          <p className="text-xs text-muted-foreground">Filtre por turma e gerencie a impressão.</p>
+                          <p className="text-xs text-muted-foreground">Busque alunos e filtre para gerenciar a impressão.</p>
                         </div>
                         <div className="flex items-center gap-2 bg-muted p-1 rounded-md no-print">
                           <Button 
@@ -423,11 +439,49 @@ export default function Home() {
                         </div>
                       </div>
 
-                      {/* Painel de Resumo por Turma - Sempre visível */}
+                      {/* Novos Filtros de Busca e Visualização */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 no-print">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input 
+                            placeholder="Buscar aluno por nome..." 
+                            className="pl-9 h-10"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant={showOnlyEnabled ? "secondary" : "outline"} 
+                            className="flex-1 h-10 gap-2 text-xs"
+                            onClick={() => setShowOnlyEnabled(!showOnlyEnabled)}
+                          >
+                            <Filter size={14} />
+                            {showOnlyEnabled ? "Mostrando apenas ativos" : "Filtrar apenas ativos"}
+                          </Button>
+                          {(searchTerm || showOnlyEnabled || filterTurma) && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-10 w-10 text-destructive"
+                              onClick={() => {
+                                setSearchTerm("");
+                                setShowOnlyEnabled(false);
+                                setFilterTurma(null);
+                              }}
+                              title="Limpar todos os filtros"
+                            >
+                              <FilterX size={18} />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Painel de Resumo por Turma */}
                       <div className="bg-muted/30 p-4 rounded-lg border no-print">
                         <div className="flex items-center gap-2 mb-3">
                           <Users size={16} className="text-primary" />
-                          <h3 className="text-sm font-bold uppercase tracking-wider">Resumo por Turma</h3>
+                          <h3 className="text-sm font-bold uppercase tracking-wider">Filtrar por Turma</h3>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <Button 
@@ -453,25 +507,18 @@ export default function Home() {
                         </div>
                       </div>
 
-                      {/* Ações Rápidas e Edição em Massa - Sempre visíveis */}
+                      {/* Ações Rápidas e Edição em Massa */}
                       <div className="space-y-4 no-print border-b pb-6">
                         <div className="flex flex-wrap gap-4 items-center justify-between">
                           <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                            {filterTurma ? (
-                              <span className="flex items-center gap-1">
-                                Exibindo: <Badge className="bg-primary/20 text-primary border-primary/20 hover:bg-primary/20">{filterTurma}</Badge>
-                                <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => setFilterTurma(null)}><FilterX size={10} /></Button>
-                              </span>
-                            ) : (
-                              <span>Exibindo todos os alunos</span>
-                            )}
+                            <span>Exibindo <b>{filteredStudents.length}</b> alunos</span>
                           </div>
                           <div className="flex gap-2">
                             <Button variant="outline" size="sm" onClick={() => toggleAllInCurrentView(true)} className="text-xs h-8">
-                              <CheckSquare className="mr-2 h-3 w-3" /> Ativar {filterTurma ? `Turma ${filterTurma}` : "Tudo"}
+                              <CheckSquare className="mr-2 h-3 w-3" /> Ativar {filterTurma ? `Turma ${filterTurma}` : "Visíveis"}
                             </Button>
                             <Button variant="outline" size="sm" onClick={() => toggleAllInCurrentView(false)} className="text-xs h-8">
-                              <Square className="mr-2 h-3 w-3" /> Desativar {filterTurma ? `Turma ${filterTurma}` : "Tudo"}
+                              <Square className="mr-2 h-3 w-3" /> Desativar {filterTurma ? `Turma ${filterTurma}` : "Visíveis"}
                             </Button>
                             
                             <AlertDialog>
