@@ -93,17 +93,16 @@ export const generatePdf = async (
         if(textColorRgb) pdf.setTextColor(textColorRgb.r, textColorRgb.g, textColorRgb.b);
         pdf.setFont('helvetica', style.fontWeight === 'bold' ? 'bold' : 'normal');
 
-        // Calibração do tamanho da fonte (CSS para PDF costuma precisar de um fator de ajuste de ~0.9)
-        let fontSizeMm = (style.fontSize || 24) * pxToMm * 0.9;
+        // Calibração do tamanho da fonte (CSS para PDF reduzido para paridade visual)
+        let fontSizeMm = (style.fontSize || 24) * pxToMm * 0.82;
         let pdfFontSizePt = fontSizeMm / 0.3527; 
         pdf.setFontSize(pdfFontSizePt);
 
         // 3. Verificação de Transbordo (Auto-Scaling)
         const hOffset = (style.paddingLeft || 0) * pxToMm;
         const vOffset = (style.paddingTop || 0) * pxToMm;
-        const maxWidth = boxW - Math.abs(hOffset) - 2; // Margem de segurança de 2mm
+        const maxWidth = boxW - Math.abs(hOffset) - 2; // Margem de segurança
 
-        // Reduz a fonte se o texto for maior que a largura disponível
         let currentTextWidth = pdf.getTextWidth(String(text));
         while (currentTextWidth > maxWidth && pdfFontSizePt > 6) {
             pdfFontSizePt -= 1;
@@ -119,17 +118,18 @@ export const generatePdf = async (
             drawX = boxX + hOffset + (boxW - hOffset) / 2;
             align = 'center';
         } else if (style.textAlign === 'right') {
-            drawX = boxX + boxW - 1; // 1mm de recuo da borda direita
+            drawX = boxX + boxW - 1;
             align = 'right';
         } else {
-            drawX = boxX + hOffset + 1; // 1mm de avanço da borda esquerda
+            drawX = boxX + hOffset + 1;
         }
 
         // 5. Alinhamento Vertical Preciso
         // O jsPDF com baseline 'middle' centraliza na linha de base.
-        // Adicionamos um pequeno ajuste proporcional ao tamanho da fonte para o centro visual.
+        // Adicionamos o ajuste proporcional e os 5px extras solicitados.
         const verticalVisualAdjustment = (pdfFontSizePt * 0.3527) * 0.15;
-        const drawY = boxY + vOffset + (boxH - vOffset) / 2 + verticalVisualAdjustment;
+        const additionalManualOffset = 5 * pxToMm; // Descer os 5px extras solicitados
+        const drawY = boxY + vOffset + (boxH - vOffset) / 2 + verticalVisualAdjustment + additionalManualOffset;
 
         try {
             pdf.text(
