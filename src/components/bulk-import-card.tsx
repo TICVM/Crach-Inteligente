@@ -26,7 +26,7 @@ interface BulkImportCardProps {
 
 export default function BulkImportCard({ onImport, models }: BulkImportCardProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedModelId, setSelectedModelId] = useState<string>("");
+  const [selectedModelId, setSelectedModelId] = useState<string>("default");
   const excelFileRef = useRef<HTMLInputElement>(null);
   const photosRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -80,14 +80,13 @@ export default function BulkImportCard({ onImport, models }: BulkImportCardProps
             reader.onload = async (e) => {
                 const rawFotoUrl = e.target?.result as string;
                 try {
-                  // Otimiza cada foto durante a importação em massa
                   const optimizedFoto = await compressImage(rawFotoUrl);
                   resolve({ 
                     nome, 
                     turma, 
                     fotoUrl: optimizedFoto, 
                     enabled: true,
-                    modeloId: selectedModelId || undefined
+                    modeloId: selectedModelId === "default" ? undefined : selectedModelId
                   });
                 } catch (err) {
                   reject(err);
@@ -117,6 +116,7 @@ export default function BulkImportCard({ onImport, models }: BulkImportCardProps
       setIsLoading(false);
       if(excelFileRef.current) excelFileRef.current.value = "";
       if(photosRef.current) photosRef.current.value = "";
+      setSelectedModelId("default");
     }
   };
 
@@ -139,7 +139,7 @@ export default function BulkImportCard({ onImport, models }: BulkImportCardProps
               <SelectValue placeholder="Design Aplicado (Padrão)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Design Aplicado (Padrão)</SelectItem>
+              <SelectItem value="default">Design Aplicado (Padrão)</SelectItem>
               {models.map(m => (
                 <SelectItem key={m.id} value={m.id}>{m.nomeModelo}</SelectItem>
               ))}
