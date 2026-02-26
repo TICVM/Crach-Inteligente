@@ -81,7 +81,12 @@
     background: white !important;
   }
 
-  main, header, footer, .no-print {
+  /* Esconde TUDO exceto a área de impressão */
+  body > *:not(#printable-area) {
+    display: none !important;
+  }
+  
+  main, header, footer, .no-print, nav, [role="region"] {
     display: none !important;
   }
 
@@ -98,16 +103,19 @@
   .print-grid {
     display: grid;
     grid-template-columns: repeat(2, 90mm);
+    grid-template-rows: repeat(3, 65mm); /* 3 linhas para 6 crachás */
     gap: 10mm 10mm;
     justify-content: center;
+    align-content: start;
   }
 
   .print-item {
     width: 90mm;
-    height: 65mm; /* Mantém a proporção 1063:768 aproximadamente */
+    height: 65mm; 
     position: relative;
     break-inside: avoid;
     page-break-inside: avoid;
+    overflow: hidden;
   }
 
   /* Forçar cores e imagens na impressão */

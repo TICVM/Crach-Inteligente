@@ -8,20 +8,20 @@ const BADGE_BASE_HEIGHT = 768;
 async function toDataURL(url: string): Promise<string> {
     if (url.startsWith('data:')) return url;
     
-    return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.onload = function () {
+    try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onloadend = function () {
-                resolve(reader.result as string);
-            };
-            reader.readAsDataURL(xhr.response);
-        };
-        xhr.onerror = () => reject(new Error(`Erro ao carregar imagem: ${url}`));
-        xhr.open('GET', url);
-        xhr.responseType = 'blob';
-        xhr.send();
-    });
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.error(`Erro ao converter imagem para DataURL: ${url}`, error);
+        // Fallback para uma imagem vazia ou placeholder se falhar
+        return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
+    }
 }
 
 function hexToRgb(hex: string) {
@@ -43,14 +43,15 @@ export const generatePdf = async (
 ) => {
     const a4 = { width: 210, height: 297 };
     const badgesPerLine = 2;
-    const badgesPerColumn = 4;
+    const badgesPerColumn = 3; // Alterado para 3 (total 6 por página)
     const totalPerPage = badgesPerLine * badgesPerColumn;
     const marginX = 10;
-    const marginY = 10;
-    const gapX = 5;
-    const gapY = 5;
+    const marginY = 15;
+    const gapX = 10;
+    const gapY = 10;
 
-    const badgeWidth = (a4.width - marginX * 2 - gapX * (badgesPerLine - 1)) / badgesPerLine;
+    // Calcula largura do crachá para caber 2 por linha com gap
+    const badgeWidth = (a4.width - marginX * 2 - gapX) / badgesPerLine;
     const badgeHeight = badgeWidth * (BADGE_BASE_HEIGHT / BADGE_BASE_WIDTH);
 
     const pdf = new jsPDF({
@@ -66,7 +67,7 @@ export const generatePdf = async (
         const bgRgb = hexToRgb(style.backgroundColor);
         if (bgRgb && style.backgroundOpacity > 0) {
             pdf.setFillColor(bgRgb.r, bgRgb.g, bgRgb.b);
-            // Simula opacidade no PDF via preenchimento claro se necessário
+            pdf.setGState(new (pdf as any).GState({ opacity: style.backgroundOpacity }));
             pdf.roundedRect(
                 x + style.x * pxToMmX, 
                 y + style.y * pxToMmY, 
@@ -76,6 +77,7 @@ export const generatePdf = async (
                 style.backgroundRadius * pxToMmY, 
                 'F'
             );
+            pdf.setGState(new (pdf as any).GState({ opacity: 1 }));
         }
 
         const textColorRgb = hexToRgb(style.color);
@@ -91,13 +93,12 @@ export const generatePdf = async (
         
         const textPaddingX = 2 * pxToMmX;
         
-        // Aplica o deslocamento horizontal (paddingLeft)
+        // Deslocamento horizontal e vertical customizado
         const horizontalOffset = style.paddingLeft * pxToMmX;
-        const textX = x + style.x * pxToMmX + (style.textAlign === 'center' ? style.width * pxToMmX / 2 : style.textAlign === 'right' ? style.width * pxToMmX - textPaddingX : textPaddingX) + horizontalOffset;
-        
-        // Aplica o deslocamento vertical (paddingTop)
         const verticalOffset = style.paddingTop * pxToMmY;
-        const textY = y + (style.y + style.height / 2) * pxToMmY + (fontSizeMm * 0.2) + verticalOffset;
+        
+        const textX = x + style.x * pxToMmX + (style.textAlign === 'center' ? style.width * pxToMmX / 2 : style.textAlign === 'right' ? style.width * pxToMmX - textPaddingX : textPaddingX) + horizontalOffset;
+        const textY = y + (style.y + style.height / 2) * pxToMmY + (fontSizeMm * 0.3) + verticalOffset;
 
         pdf.text(
             text,
@@ -131,10 +132,14 @@ export const generatePdf = async (
         const currentStyle = studentModel?.badgeStyle || fallbackStyle;
 
         // 1. Adiciona o Fundo
-        if (!backgroundCache[currentBackground]) {
-            backgroundCache[currentBackground] = await toDataURL(currentBackground);
+        try {
+            if (!backgroundCache[currentBackground]) {
+                backgroundCache[currentBackground] = await toDataURL(currentBackground);
+            }
+            pdf.addImage(backgroundCache[currentBackground], 'JPEG', x, y, badgeWidth, badgeHeight);
+        } catch (e) {
+            console.error("Erro ao adicionar fundo no PDF", e);
         }
-        pdf.addImage(backgroundCache[currentBackground], 'JPEG', x, y, badgeWidth, badgeHeight);
 
         // 2. Adiciona a Foto
         if (student.fotoUrl) {
@@ -148,7 +153,7 @@ export const generatePdf = async (
                 currentStyle.photo.height * pxToMmY
             );
           } catch (e) {
-            console.error("Erro na foto do aluno:", student.nome, e);
+            console.error("Erro na foto do aluno no PDF:", student.nome, e);
           }
         }
 

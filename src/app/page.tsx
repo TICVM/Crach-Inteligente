@@ -13,7 +13,7 @@ import StudentList from "@/components/student-list";
 import StudentBadge from "@/components/student-badge";
 import ModelsListCard from "@/components/models-list-card";
 import { Button } from "@/components/ui/button";
-import { FileDown, Printer, Loader2, Cloud, RefreshCw, ChevronLeft, ChevronRight, LayoutGrid, List } from "lucide-react";
+import { FileDown, Printer, Loader2, ChevronLeft, ChevronRight, LayoutGrid, List } from "lucide-react";
 import { type BadgeStyleConfig, defaultBadgeStyle } from "@/lib/badge-styles";
 import { useFirestore, useCollection, useAuth, useMemoFirebase, useUser } from "@/firebase";
 import { deleteDocumentNonBlocking, updateDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
@@ -172,7 +172,7 @@ export default function Home() {
       toast({ title: "PDF gerado com sucesso!" });
     } catch (error) {
       console.error(error);
-      toast({ variant: "destructive", title: "Erro no PDF" });
+      toast({ variant: "destructive", title: "Erro no PDF", description: "Ocorreu um erro ao processar o PDF. Verifique os logs." });
     } finally {
       setIsPdfLoading(false);
     }
@@ -180,6 +180,7 @@ export default function Home() {
 
   const handlePrint = () => {
     setIsPrinting(true);
+    // Pequeno atraso para garantir que o DOM de impressão esteja atualizado
     setTimeout(() => {
       window.print();
       setIsPrinting(false);
@@ -246,11 +247,11 @@ export default function Home() {
                   <div className="flex flex-col sm:flex-row gap-4">
                      <Button className="flex-1 shadow-md" onClick={handleGeneratePdf} disabled={isPdfLoading || students.length === 0}>
                       {isPdfLoading ? <Loader2 className="animate-spin mr-2" /> : <FileDown className="mr-2" />}
-                      Gerar PDF de Alta Qualidade
+                      Gerar PDF (6 por folha)
                     </Button>
                     <Button variant="outline" className="flex-1" onClick={handlePrint} disabled={isPrinting || students.length === 0}>
                       <Printer className="mr-2" />
-                      Imprimir em Folha A4
+                      Imprimir Folha A4
                     </Button>
                   </div>
                 </div>
@@ -325,7 +326,7 @@ export default function Home() {
         )}
       </main>
       
-      {/* Área de Impressão (Gerada fora do fluxo principal para evitar erros de layout) */}
+      {/* Área de Impressão isolada */}
       <div id="printable-area">
           <div className="print-grid">
           {students.map((student) => {
