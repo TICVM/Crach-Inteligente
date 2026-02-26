@@ -165,7 +165,6 @@ export default function Home() {
   const addStudent = (student: Omit<Student, "id">) => {
     if (!alunosCollection) return;
     addDocumentNonBlocking(alunosCollection, { ...student, enabled: true });
-    toast({ title: "Aluno adicionado!" });
   };
 
   const updateStudent = (updatedStudent: Student) => {
@@ -270,7 +269,10 @@ export default function Home() {
                   models={models} 
                   activeModelId={activeModel?.id} 
                 />
-                <BulkImportCard onImport={(newOnes) => newOnes.forEach(addStudent)} />
+                <BulkImportCard 
+                  onImport={(newOnes) => newOnes.forEach(addStudent)} 
+                  models={models}
+                />
               </div>
 
               <div className="lg:col-span-2 flex flex-col gap-8">

@@ -7,16 +7,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { type Student } from '@/lib/types';
-import { Upload, Loader2 } from 'lucide-react';
+import { type Student, type BadgeModel } from '@/lib/types';
+import { Upload, Loader2, Layout } from 'lucide-react';
 import { compressImage } from '@/lib/image-utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 interface BulkImportCardProps {
   onImport: (students: Omit<Student, 'id'>[]) => void;
+  models: BadgeModel[];
 }
 
-export default function BulkImportCard({ onImport }: BulkImportCardProps) {
+export default function BulkImportCard({ onImport, models }: BulkImportCardProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedModelId, setSelectedModelId] = useState<string>("");
   const excelFileRef = useRef<HTMLInputElement>(null);
   const photosRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -72,7 +82,13 @@ export default function BulkImportCard({ onImport }: BulkImportCardProps) {
                 try {
                   // Otimiza cada foto durante a importação em massa
                   const optimizedFoto = await compressImage(rawFotoUrl);
-                  resolve({ nome, turma, fotoUrl: optimizedFoto, enabled: true });
+                  resolve({ 
+                    nome, 
+                    turma, 
+                    fotoUrl: optimizedFoto, 
+                    enabled: true,
+                    modeloId: selectedModelId || undefined
+                  });
                 } catch (err) {
                   reject(err);
                 }
@@ -84,6 +100,11 @@ export default function BulkImportCard({ onImport }: BulkImportCardProps) {
 
       const importedStudents = await Promise.all(promises as Promise<Omit<Student, 'id'>>[]);
       onImport(importedStudents);
+      
+      toast({
+        title: "Sucesso!",
+        description: `${importedStudents.length} alunos importados com sucesso.`,
+      });
 
     } catch (error) {
       console.error(error);
@@ -109,19 +130,40 @@ export default function BulkImportCard({ onImport }: BulkImportCardProps) {
         <CardDescription>Importe via Excel e associe com fotos locais.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div>
-          <label htmlFor="excelFileUnico" className="text-sm font-medium">Arquivo Excel (.xlsx)</label>
+        <div className="space-y-2">
+          <Label className="text-sm font-medium flex items-center gap-2">
+            <Layout size={14} /> Modelo de Design (Opcional)
+          </Label>
+          <Select onValueChange={setSelectedModelId} value={selectedModelId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Design Aplicado (Padrão)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Design Aplicado (Padrão)</SelectItem>
+              {models.map(m => (
+                <SelectItem key={m.id} value={m.id}>{m.nomeModelo}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="excelFileUnico" className="text-sm font-medium">Arquivo Excel (.xlsx)</Label>
           <Input id="excelFileUnico" type="file" accept=".xlsx" ref={excelFileRef} />
         </div>
-        <div>
-          <label htmlFor="fotosEmMassa" className="text-sm font-medium">Fotos dos Alunos</label>
+        
+        <div className="space-y-2">
+          <Label htmlFor="fotosEmMassa" className="text-sm font-medium">Fotos dos Alunos</Label>
           <Input id="fotosEmMassa" type="file" accept="image/*" multiple ref={photosRef} />
         </div>
-        <div className="text-xs text-muted-foreground bg-secondary p-2 rounded-md">
-            <b>Dica:</b> O sistema associará a primeira linha do Excel à primeira foto, a segunda à segunda, e assim por diante. Renomeie suas fotos em ordem (ex: `aluno_01.jpg`, `aluno_02.jpg`) para garantir a associação correta.
+
+        <div className="text-xs text-muted-foreground bg-secondary/50 p-3 rounded-md border border-dashed">
+            <b>Dica de Ordem:</b> O sistema associa a 1ª linha do Excel à 1ª foto da pasta. Nomeie as fotos em ordem alfabética/numérica (ex: 01.jpg, 02.jpg) para garantir a correspondência.
         </div>
-        <Button onClick={handleImport} className="w-full" disabled={isLoading}>
-          {isLoading ? <Loader2 className="animate-spin" /> : 'Importar Alunos'}
+        
+        <Button onClick={handleImport} className="w-full shadow-sm" disabled={isLoading}>
+          {isLoading ? <Loader2 className="animate-spin mr-2" /> : <Upload className="mr-2" />}
+          Importar Lote
         </Button>
       </CardContent>
     </Card>
