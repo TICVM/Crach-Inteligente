@@ -51,18 +51,44 @@ export default function BulkImportCard({ onImport, models }: BulkImportCardProps
       const workbook = XLSX.read(data);
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      const json = XLSX.utils.sheet_to_json<any>(worksheet, { header: 1 });
       
-      const studentData = json.slice(1); // Ignora o cabeçalho
+      // Obtém todas as linhas como arrays de strings (header: 1)
+      const rawRows = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1 });
+      
+      // 1. Filtrar linhas que estão realmente vazias (sem dados úteis nas primeiras colunas)
+      const filteredRows = rawRows.filter(row => {
+        if (!row || row.length < 1) return false;
+        const nomeValue = String(row[0] || '').trim();
+        const turmaValue = String(row[1] || '').trim();
+        return nomeValue !== '' || turmaValue !== '';
+      });
+
+      // 2. Detectar e ignorar o cabeçalho
+      // Se a primeira linha válida contém as palavras "Nome" ou "Turma", é o cabeçalho.
+      let studentData = filteredRows;
+      if (filteredRows.length > 0) {
+        const firstRow = filteredRows[0];
+        const cell1 = String(firstRow[0] || '').toLowerCase();
+        const cell2 = String(firstRow[1] || '').toLowerCase();
+        
+        const isHeader = cell1.includes('nome') || cell1.includes('name') || 
+                         cell2.includes('turma') || cell2.includes('class');
+        
+        if (isHeader) {
+          studentData = filteredRows.slice(1);
+        }
+      }
+
       const sortedPhotos = Array.from(photoFiles).sort((a, b) => 
         a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
       );
 
+      // Verificação de quantidade após remover o cabeçalho
       if (studentData.length !== sortedPhotos.length) {
         toast({
           variant: 'destructive',
           title: 'Erro de correspondência',
-          description: `O arquivo Excel tem ${studentData.length} alunos, mas ${sortedPhotos.length} fotos foram selecionadas. A quantidade deve ser a mesma.`,
+          description: `Foram detectados ${studentData.length} alunos válidos no Excel, mas você selecionou ${sortedPhotos.length} fotos. As quantidades devem ser iguais.`,
         });
         setIsLoading(false);
         return;
@@ -110,7 +136,7 @@ export default function BulkImportCard({ onImport, models }: BulkImportCardProps
       toast({
         variant: 'destructive',
         title: 'Erro na importação',
-        description: 'Não foi possível processar os arquivos. Verifique o formato.',
+        description: 'Verifique se o Excel segue o formato esperado (Coluna A: Nome, Coluna B: Turma).',
       });
     } finally {
       setIsLoading(false);
@@ -158,7 +184,7 @@ export default function BulkImportCard({ onImport, models }: BulkImportCardProps
         </div>
 
         <div className="text-xs text-muted-foreground bg-secondary/50 p-3 rounded-md border border-dashed">
-            <b>Dica de Ordem:</b> O sistema associa a 1ª linha do Excel à 1ª foto da pasta. Nomeie as fotos em ordem alfabética/numérica (ex: 01.jpg, 02.jpg) para garantir a correspondência.
+            <b>Nota:</b> O sistema ignora automaticamente a linha de título (Nome/Turma). Garanta que a ordem das fotos selecionadas corresponda à ordem do Excel.
         </div>
         
         <Button onClick={handleImport} className="w-full shadow-sm" disabled={isLoading}>
