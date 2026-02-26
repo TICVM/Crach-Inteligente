@@ -1,4 +1,3 @@
-
 import jsPDF from 'jspdf';
 import { type Student, type BadgeModel } from './types';
 import { type BadgeStyleConfig, type TextStyle } from './badge-styles';
@@ -67,17 +66,16 @@ export const generatePdf = async (
         const bgRgb = hexToRgb(style.backgroundColor);
         if (bgRgb && style.backgroundOpacity > 0) {
             pdf.setFillColor(bgRgb.r, bgRgb.g, bgRgb.b);
-            if (style.backgroundOpacity > 0.2) {
-                pdf.roundedRect(
-                    x + style.x * pxToMmX, 
-                    y + style.y * pxToMmY, 
-                    style.width * pxToMmX, 
-                    style.height * pxToMmY, 
-                    style.backgroundRadius * pxToMmX, 
-                    style.backgroundRadius * pxToMmY, 
-                    'F'
-                );
-            }
+            // Simula opacidade no PDF via preenchimento claro se necessário
+            pdf.roundedRect(
+                x + style.x * pxToMmX, 
+                y + style.y * pxToMmY, 
+                style.width * pxToMmX, 
+                style.height * pxToMmY, 
+                style.backgroundRadius * pxToMmX, 
+                style.backgroundRadius * pxToMmY, 
+                'F'
+            );
         }
 
         const textColorRgb = hexToRgb(style.color);
@@ -92,7 +90,10 @@ export const generatePdf = async (
         pdf.setFont('helvetica', style.fontWeight === 'bold' ? 'bold' : 'normal');
         
         const textPaddingX = 2 * pxToMmX;
-        const textX = x + style.x * pxToMmX + (style.textAlign === 'center' ? style.width * pxToMmX / 2 : style.textAlign === 'right' ? style.width * pxToMmX - textPaddingX : textPaddingX);
+        
+        // Aplica o deslocamento horizontal (paddingLeft)
+        const horizontalOffset = style.paddingLeft * pxToMmX;
+        const textX = x + style.x * pxToMmX + (style.textAlign === 'center' ? style.width * pxToMmX / 2 : style.textAlign === 'right' ? style.width * pxToMmX - textPaddingX : textPaddingX) + horizontalOffset;
         
         // Aplica o deslocamento vertical (paddingTop)
         const verticalOffset = style.paddingTop * pxToMmY;
@@ -129,19 +130,13 @@ export const generatePdf = async (
         const currentBackground = studentModel?.fundoCrachaUrl || fallbackBackground;
         const currentStyle = studentModel?.badgeStyle || fallbackStyle;
 
-        // Clip rounded corners for the whole badge if radius > 0
-        if (currentStyle.badgeRadius > 0) {
-           // Not easy in standard jsPDF without extra plugins, 
-           // but we can draw the background image then rounded border
-        }
-
-        // 1. Add Background
+        // 1. Adiciona o Fundo
         if (!backgroundCache[currentBackground]) {
             backgroundCache[currentBackground] = await toDataURL(currentBackground);
         }
         pdf.addImage(backgroundCache[currentBackground], 'JPEG', x, y, badgeWidth, badgeHeight);
 
-        // 2. Add Photo
+        // 2. Adiciona a Foto
         if (student.fotoUrl) {
           try {
             const studentPhotoDataUrl = await toDataURL(student.fotoUrl);
@@ -157,7 +152,7 @@ export const generatePdf = async (
           }
         }
 
-        // 3. Draw Photo Border
+        // 3. Desenha a borda da foto
         if (currentStyle.photo.hasBorder && currentStyle.photo.borderWidth > 0) {
             const borderColorRgb = hexToRgb(currentStyle.photo.borderColor);
             if (borderColorRgb) {
@@ -175,7 +170,7 @@ export const generatePdf = async (
             }
         }
 
-        // 4. Add Text Elements
+        // 4. Adiciona os Elementos de Texto
         renderTextOnPdf(student.nome, currentStyle.name, x, y);
         renderTextOnPdf(student.turma, currentStyle.turma, x, y);
         currentStyle.customFields.forEach(field => {

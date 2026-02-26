@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useRef, type ChangeEvent } from 'react';
@@ -116,6 +115,7 @@ export default function CustomizeCard({
           backgroundOpacity: 0,
           backgroundRadius: 6,
           paddingTop: 0,
+          paddingLeft: 0,
       };
       setBadgeStyle(prev => ({ ...prev, customFields: [...prev.customFields, newField] }));
   };
@@ -140,17 +140,27 @@ export default function CustomizeCard({
             </div>
         </div>
 
-        <div className="pt-2 border-t mt-2">
-            <CustomSlider label="Deslocamento Vertical" value={badgeStyle[field].paddingTop} min={-100} max={100} step={1} onChange={(val) => handleStyleChange(field, 'paddingTop', val[0])} />
-            <div className="flex justify-end mt-1">
-                <span className="text-[10px] text-muted-foreground">{badgeStyle[field].paddingTop}px</span>
+        <div className="pt-2 border-t mt-2 space-y-3">
+            <div>
+              <CustomSlider label="Deslocamento Vertical" value={badgeStyle[field].paddingTop} min={-100} max={100} step={1} onChange={(val) => handleStyleChange(field, 'paddingTop', val[0])} />
+              <div className="flex justify-end mt-1">
+                  <span className="text-[10px] text-muted-foreground">{badgeStyle[field].paddingTop}px</span>
+              </div>
+            </div>
+            <div>
+              <CustomSlider label="Deslocamento Horizontal" value={badgeStyle[field].paddingLeft} min={-100} max={100} step={1} onChange={(val) => handleStyleChange(field, 'paddingLeft', val[0])} />
+              <div className="flex justify-end mt-1">
+                  <span className="text-[10px] text-muted-foreground">{badgeStyle[field].paddingLeft}px</span>
+              </div>
             </div>
         </div>
 
-        <ColorInput label="Cor Fonte" value={badgeStyle[field].color} onChange={(e) => handleStyleChange(field, 'color', e.target.value)} />
-        <ColorInput label="Cor Fundo" value={badgeStyle[field].backgroundColor} onChange={(e) => handleStyleChange(field, 'backgroundColor', e.target.value)} />
-        <CustomSlider label="Opacidade Fundo" value={badgeStyle[field].backgroundOpacity} onChange={(val) => handleStyleChange(field, 'backgroundOpacity', val[0])} />
-        <StyleInput label="Arredondar Cantos" value={badgeStyle[field].backgroundRadius} onChange={(e) => handleStyleChange(field, 'backgroundRadius', safeParseInt(e.target.value))} />
+        <div className="pt-2 border-t mt-2">
+            <ColorInput label="Cor Fonte" value={badgeStyle[field].color} onChange={(e) => handleStyleChange(field, 'color', e.target.value)} />
+            <ColorInput label="Cor Fundo" value={badgeStyle[field].backgroundColor} onChange={(e) => handleStyleChange(field, 'backgroundColor', e.target.value)} />
+            <CustomSlider label="Opacidade Fundo" value={badgeStyle[field].backgroundOpacity} onChange={(val) => handleStyleChange(field, 'backgroundOpacity', val[0])} />
+            <StyleInput label="Arredondar Cantos" value={badgeStyle[field].backgroundRadius} onChange={(e) => handleStyleChange(field, 'backgroundRadius', safeParseInt(e.target.value))} />
+        </div>
       </AccordionContent>
     </AccordionItem>
   );
@@ -230,6 +240,7 @@ export default function CustomizeCard({
                     </div>
                     <StyleInput label="Posição Y" value={field.y} onChange={(e) => handleCustomFieldChange(field.id, 'y', safeParseInt(e.target.value))} />
                     <CustomSlider label="Deslocamento V" value={field.paddingTop} min={-50} max={50} step={1} onChange={(val) => handleCustomFieldChange(field.id, 'paddingTop', val[0])} />
+                    <CustomSlider label="Deslocamento H" value={field.paddingLeft} min={-50} max={50} step={1} onChange={(val) => handleCustomFieldChange(field.id, 'paddingLeft', val[0])} />
                 </div>
               ))}
                <Button onClick={addCustomField} className="w-full mt-2" variant="outline" size="sm">
