@@ -60,7 +60,6 @@ export default function Home() {
   const students = studentsData || [];
   const models = modelsData || [];
 
-  // Define um modelo padrão ao carregar se nenhum estiver selecionado
   useEffect(() => {
     if (!isModelsLoading && models.length > 0 && !activeModel) {
       setActiveModel(models[0]);
@@ -180,7 +179,6 @@ export default function Home() {
 
   const handlePrint = () => {
     setIsPrinting(true);
-    // Pequeno atraso para garantir que o DOM de impressão esteja atualizado
     setTimeout(() => {
       window.print();
       setIsPrinting(false);
@@ -247,11 +245,11 @@ export default function Home() {
                   <div className="flex flex-col sm:flex-row gap-4">
                      <Button className="flex-1 shadow-md" onClick={handleGeneratePdf} disabled={isPdfLoading || students.length === 0}>
                       {isPdfLoading ? <Loader2 className="animate-spin mr-2" /> : <FileDown className="mr-2" />}
-                      Gerar PDF (6 por folha)
+                      Gerar PDF (8 por folha)
                     </Button>
                     <Button variant="outline" className="flex-1" onClick={handlePrint} disabled={isPrinting || students.length === 0}>
                       <Printer className="mr-2" />
-                      Imprimir Folha A4
+                      Imprimir Folha A4 (8 por folha)
                     </Button>
                   </div>
                 </div>
@@ -326,7 +324,6 @@ export default function Home() {
         )}
       </main>
       
-      {/* Área de Impressão isolada */}
       <div id="printable-area">
           <div className="print-grid">
           {students.map((student) => {

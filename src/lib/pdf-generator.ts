@@ -43,12 +43,12 @@ export const generatePdf = async (
 ) => {
     const a4 = { width: 210, height: 297 };
     const badgesPerLine = 2;
-    const badgesPerColumn = 3; // 2x3 = 6 por folha
+    const badgesPerColumn = 4; // Alterado para 4 linhas (2x4 = 8 por folha)
     const totalPerPage = badgesPerLine * badgesPerColumn;
     const marginX = 10;
-    const marginY = 15;
+    const marginY = 10;
     const gapX = 10;
-    const gapY = 10;
+    const gapY = 5;
 
     const badgeWidth = (a4.width - marginX * 2 - gapX) / badgesPerLine;
     const badgeHeight = badgeWidth * (BADGE_BASE_HEIGHT / BADGE_BASE_WIDTH);
@@ -124,7 +124,7 @@ export const generatePdf = async (
                 safeX,
                 safeY,
                 { 
-                    maxWidth: safeWidth, 
+                    maxWidth: safeWidth > 0 ? safeWidth : 1, 
                     align: (style.textAlign || 'left') as any,
                     baseline: 'middle'
                 }
