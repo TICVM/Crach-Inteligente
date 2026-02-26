@@ -1,5 +1,6 @@
+
 import jsPDF from 'jspdf';
-import { type Student } from './types';
+import { type Student, type BadgeModel } from './types';
 import { type BadgeStyleConfig, type TextStyle } from './badge-styles';
 
 const BADGE_BASE_WIDTH = 1063;
@@ -35,7 +36,12 @@ function hexToRgb(hex: string) {
       : null;
 }
 
-export const generatePdf = async (students: Student[], backgroundUrl: string, styles: BadgeStyleConfig) => {
+export const generatePdf = async (
+  students: Student[], 
+  fallbackBackground: string, 
+  fallbackStyle: BadgeStyleConfig,
+  models: BadgeModel[]
+) => {
     const a4 = { width: 210, height: 297 };
     const badgesPerLine = 2;
     const badgesPerColumn = 4;
@@ -61,7 +67,6 @@ export const generatePdf = async (students: Student[], backgroundUrl: string, st
         const bgRgb = hexToRgb(style.backgroundColor);
         if (bgRgb && style.backgroundOpacity > 0) {
             pdf.setFillColor(bgRgb.r, bgRgb.g, bgRgb.b);
-            // Simulating opacity with lighter fill is hard in jsPDF standard, but we'll use solid for print clarity
             pdf.roundedRect(
                 x + style.x * pxToMmX, 
                 y + style.y * pxToMmY, 
@@ -78,9 +83,8 @@ export const generatePdf = async (students: Student[], backgroundUrl: string, st
           pdf.setTextColor(textColorRgb.r, textColorRgb.g, textColorRgb.b);
         }
 
-        // Adjust font size for PDF
-        const pdfFontSize = style.fontSize * 0.264583; // Conversion factor approx
-        pdf.setFontSize(pdfFontSize * 3.5); // Adjusting scaling for jspdf units
+        const pdfFontSize = style.fontSize * 0.264583; 
+        pdf.setFontSize(pdfFontSize * 3.5); 
         pdf.setFont('helvetica', style.fontWeight);
         
         const textPaddingX = 10 * pxToMmX;
@@ -99,12 +103,8 @@ export const generatePdf = async (students: Student[], backgroundUrl: string, st
         );
     };
 
-    let backgroundDataUrl = backgroundUrl;
-    try {
-        backgroundDataUrl = await toDataURL(backgroundUrl);
-    } catch (e) {
-        console.error("Erro ao processar fundo:", e);
-    }
+    // Cache de backgrounds processados para performance
+    const backgroundCache: Record<string, string> = {};
 
     for (let i = 0; i < students.length; i++) {
         const student = students[i];
@@ -119,8 +119,16 @@ export const generatePdf = async (students: Student[], backgroundUrl: string, st
         const x = marginX + col * (badgeWidth + gapX);
         const y = marginY + row * (badgeHeight + gapY);
 
+        // Busca o modelo específico do aluno
+        const studentModel = models.find(m => m.id === student.modeloId);
+        const currentBackground = studentModel?.fundoCrachaUrl || fallbackBackground;
+        const currentStyle = studentModel?.badgeStyle || fallbackStyle;
+
         // 1. Add Background
-        pdf.addImage(backgroundDataUrl, 'PNG', x, y, badgeWidth, badgeHeight);
+        if (!backgroundCache[currentBackground]) {
+            backgroundCache[currentBackground] = await toDataURL(currentBackground);
+        }
+        pdf.addImage(backgroundCache[currentBackground], 'PNG', x, y, badgeWidth, badgeHeight);
 
         // 2. Add Photo
         if (student.fotoUrl) {
@@ -128,10 +136,10 @@ export const generatePdf = async (students: Student[], backgroundUrl: string, st
             const studentPhotoDataUrl = await toDataURL(student.fotoUrl);
             pdf.addImage(
                 studentPhotoDataUrl, 'PNG', 
-                x + styles.photo.x * pxToMmX, 
-                y + styles.photo.y * pxToMmY, 
-                styles.photo.width * pxToMmX, 
-                styles.photo.height * pxToMmY
+                x + currentStyle.photo.x * pxToMmX, 
+                y + currentStyle.photo.y * pxToMmY, 
+                currentStyle.photo.width * pxToMmX, 
+                currentStyle.photo.height * pxToMmY
             );
           } catch (e) {
             console.error("Erro na foto do aluno:", student.nome, e);
@@ -139,30 +147,30 @@ export const generatePdf = async (students: Student[], backgroundUrl: string, st
         }
 
         // 3. Draw Photo Border
-        if (styles.photo.hasBorder && styles.photo.borderWidth > 0) {
-            const borderColorRgb = hexToRgb(styles.photo.borderColor);
+        if (currentStyle.photo.hasBorder && currentStyle.photo.borderWidth > 0) {
+            const borderColorRgb = hexToRgb(currentStyle.photo.borderColor);
             if (borderColorRgb) {
                 pdf.setDrawColor(borderColorRgb.r, borderColorRgb.g, borderColorRgb.b);
-                pdf.setLineWidth(styles.photo.borderWidth * pxToMmX);
-                const radius = styles.photo.borderRadius * pxToMmX;
+                pdf.setLineWidth(currentStyle.photo.borderWidth * pxToMmX);
+                const radius = currentStyle.photo.borderRadius * pxToMmX;
                 pdf.roundedRect(
-                    x + styles.photo.x * pxToMmX, 
-                    y + styles.photo.y * pxToMmY, 
-                    styles.photo.width * pxToMmX, 
-                    styles.photo.height * pxToMmY,
+                    x + currentStyle.photo.x * pxToMmX, 
+                    y + currentStyle.photo.y * pxToMmY, 
+                    currentStyle.photo.width * pxToMmX, 
+                    currentStyle.photo.height * pxToMmY,
                     radius, radius, 'S'
                 );
             }
         }
 
         // 4. Add Text Elements
-        renderTextOnPdf(student.nome, styles.name, x, y);
-        renderTextOnPdf(student.turma, styles.turma, x, y);
-        styles.customFields.forEach(field => {
+        renderTextOnPdf(student.nome, currentStyle.name, x, y);
+        renderTextOnPdf(student.turma, currentStyle.turma, x, y);
+        currentStyle.customFields.forEach(field => {
             const value = student.customData?.[field.id];
             if (value) renderTextOnPdf(value, field, x, y);
         });
     }
     
-    pdf.save('crachas-escolares.pdf');
+    pdf.save('crachas-multi-modelo.pdf');
 };

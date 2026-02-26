@@ -1,40 +1,35 @@
+
 "use client";
 
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { type Student } from "@/lib/types";
+import { type Student, type BadgeModel } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { UserPlus, Loader2 } from "lucide-react";
-import React from "react";
-import { type BadgeStyleConfig } from "@/lib/badge-styles";
+import React, { useEffect } from "react";
 import { compressImage } from "@/lib/image-utils";
 
 interface AddStudentCardProps {
   onAddStudent: (student: Omit<Student, "id">) => void;
-  badgeStyle: BadgeStyleConfig;
+  models: BadgeModel[];
+  activeModelId?: string;
 }
 
-export default function AddStudentCard({ onAddStudent, badgeStyle }: AddStudentCardProps) {
+export default function AddStudentCard({ onAddStudent, models, activeModelId }: AddStudentCardProps) {
   const { toast } = useToast();
 
-  const formSchema = React.useMemo(() => {
-    const customFieldsSchema = badgeStyle.customFields.reduce((acc, field) => {
-      acc[field.id] = z.string().optional();
-      return acc;
-    }, {} as Record<string, z.ZodOptional<z.ZodString>>);
-
-    return z.object({
-      nome: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
-      turma: z.string().min(1, "A turma é obrigatória."),
-      fotoUrl: z.any().refine(fileList => fileList && fileList.length === 1, "A foto é obrigatória."),
-      ...customFieldsSchema,
-    });
-  }, [badgeStyle.customFields]);
+  const formSchema = z.object({
+    nome: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
+    turma: z.string().min(1, "A turma é obrigatória."),
+    fotoUrl: z.any().refine(fileList => fileList && fileList.length === 1, "A foto é obrigatória."),
+    modeloId: z.string().optional(),
+  });
   
   type FormValues = z.infer<typeof formSchema>;
 
@@ -44,54 +39,43 @@ export default function AddStudentCard({ onAddStudent, badgeStyle }: AddStudentC
       nome: "",
       turma: "",
       fotoUrl: undefined,
+      modeloId: activeModelId || "",
     },
   });
+
+  // Atualiza o modeloId no form quando o modelo ativo muda
+  useEffect(() => {
+    if (activeModelId) {
+      form.setValue('modeloId', activeModelId);
+    }
+  }, [activeModelId, form]);
 
   const photoRef = form.register("fotoUrl");
 
   const onSubmit: SubmitHandler<FormValues> = (data) => {
     const file = data.fotoUrl?.[0];
     if (file) {
-      const { nome, turma, fotoUrl, ...customDataValues } = data;
-      
-      const customData = Object.entries(customDataValues).reduce((acc, [key, value]) => {
-          if (value) {
-            acc[key] = value as string;
-          }
-          return acc;
-      }, {} as { [key: string]: string });
-
       const reader = new FileReader();
       reader.onload = async (e) => {
         const rawPhotoDataUrl = e.target?.result as string;
         try {
-          // Otimiza a imagem antes de salvar para evitar erros de URL/Tamanho
           const optimizedPhoto = await compressImage(rawPhotoDataUrl);
-          onAddStudent({ nome, turma, fotoUrl: optimizedPhoto, customData });
+          onAddStudent({ 
+            nome: data.nome, 
+            turma: data.turma, 
+            fotoUrl: optimizedPhoto,
+            modeloId: data.modeloId || ""
+          });
           
-          // Reseta o formulário
-          const defaultCustomValues: {[key: string]: string} = {};
-          badgeStyle.customFields.forEach(f => defaultCustomValues[f.id] = '');
           form.reset({
               nome: "",
               turma: "",
               fotoUrl: undefined,
-              ...defaultCustomValues,
+              modeloId: activeModelId || "",
           });
         } catch (error) {
-          toast({
-            variant: "destructive",
-            title: "Erro no Processamento",
-            description: "Não foi possível otimizar a foto.",
-          });
+          toast({ variant: "destructive", title: "Erro", description: "Falha ao processar foto." });
         }
-      };
-      reader.onerror = () => {
-        toast({
-          variant: "destructive",
-          title: "Erro",
-          description: "Não foi possível ler a imagem.",
-        });
       };
       reader.readAsDataURL(file);
     }
@@ -102,7 +86,7 @@ export default function AddStudentCard({ onAddStudent, badgeStyle }: AddStudentC
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-primary">
           <UserPlus />
-          Registro Manual de Aluno
+          Novo Aluno
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -113,27 +97,51 @@ export default function AddStudentCard({ onAddStudent, badgeStyle }: AddStudentC
               name="nome"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome</FormLabel>
+                  <FormLabel>Nome Completo</FormLabel>
                   <FormControl>
-                    <Input placeholder="Digite o nome do aluno" {...field} />
+                    <Input placeholder="Nome do aluno" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="turma"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Turma</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Digite a turma" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+                <FormField
+                control={form.control}
+                name="turma"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Turma</FormLabel>
+                    <FormControl>
+                        <Input placeholder="Ex: 101" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="modeloId"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Modelo de Crachá</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Escolha um design" />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            {models.map(m => (
+                                <SelectItem key={m.id} value={m.id}>{m.nomeModelo}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
             <FormField
               control={form.control}
               name="fotoUrl"
@@ -141,30 +149,14 @@ export default function AddStudentCard({ onAddStudent, badgeStyle }: AddStudentC
                 <FormItem>
                   <FormLabel>Foto</FormLabel>
                   <FormControl>
-                    <Input type="file" accept="image/*" {...photoRef} />
+                    <Input type="file" accept="image/*" {...photoRef} className="cursor-pointer" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            {badgeStyle.customFields.map((field) => (
-                <FormField
-                key={field.id}
-                control={form.control}
-                name={field.id}
-                render={({ field: formField }) => (
-                    <FormItem>
-                    <FormLabel>{field.label}</FormLabel>
-                    <FormControl>
-                        <Input placeholder={`Digite o ${field.label.toLowerCase()}`} {...formField} value={formField.value || ''} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-            ))}
             <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "Adicionar Aluno"}
+              {form.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "Registrar Aluno"}
             </Button>
           </form>
         </Form>

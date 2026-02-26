@@ -1,8 +1,8 @@
+
 "use client";
 
 import React, { useState } from 'react';
-import { type Student } from '@/lib/types';
-import { type BadgeStyleConfig } from '@/lib/badge-styles';
+import { type Student, type BadgeModel } from '@/lib/types';
 import {
   Table,
   TableBody,
@@ -30,10 +30,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
+import { Pencil, Trash2, Loader2, Layout } from 'lucide-react';
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -43,29 +44,22 @@ import { compressImage } from '@/lib/image-utils';
 
 interface StudentListProps {
   students: Student[];
+  models: BadgeModel[];
   onUpdate: (student: Student) => void;
   onDelete: (studentId: string) => void;
-  badgeStyle: BadgeStyleConfig;
 }
 
-export default function StudentList({ students, onUpdate, onDelete, badgeStyle }: StudentListProps) {
+export default function StudentList({ students, models, onUpdate, onDelete }: StudentListProps) {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const formSchema = React.useMemo(() => {
-    const customFieldsSchema = badgeStyle.customFields.reduce((acc, field) => {
-      acc[field.id] = z.string().optional();
-      return acc;
-    }, {} as Record<string, z.ZodOptional<z.ZodString>>);
-
-    return z.object({
-      nome: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
-      turma: z.string().min(1, "A turma é obrigatória."),
-      fotoUrl: z.any().optional(),
-      ...customFieldsSchema,
-    });
-  }, [badgeStyle.customFields]);
+  const formSchema = z.object({
+    nome: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
+    turma: z.string().min(1, "A turma é obrigatória."),
+    fotoUrl: z.any().optional(),
+    modeloId: z.string().optional(),
+  });
 
   type FormValues = z.infer<typeof formSchema>;
 
@@ -77,15 +71,11 @@ export default function StudentList({ students, onUpdate, onDelete, badgeStyle }
 
   const handleEditClick = (student: Student) => {
     setEditingStudent(student);
-    const defaultCustomValues: {[key: string]: string} = {};
-    badgeStyle.customFields.forEach(field => {
-        defaultCustomValues[field.id] = student.customData?.[field.id] || '';
-    });
     form.reset({
         nome: student.nome,
         turma: student.turma,
         fotoUrl: undefined,
-        ...defaultCustomValues,
+        modeloId: student.modeloId || "",
     });
     setIsDialogOpen(true);
   };
@@ -95,32 +85,25 @@ export default function StudentList({ students, onUpdate, onDelete, badgeStyle }
     setIsSubmitting(true);
     
     try {
-      const { nome, turma, fotoUrl, ...customDataValues } = data;
-      const customData = Object.entries(customDataValues).reduce((acc, [key, value]) => {
-          if (value) {
-              acc[key] = value as string;
-          }
-          return acc;
-      }, {} as { [key: string]: string });
-      
       const file = data.fotoUrl?.[0];
+      const updateData: any = { 
+        ...editingStudent, 
+        nome: data.nome, 
+        turma: data.turma, 
+        modeloId: data.modeloId 
+      };
+
       if (file) {
         const reader = new FileReader();
         reader.onload = async (e) => {
-          const rawPhotoDataUrl = e.target?.result as string;
-          // Otimiza a nova foto selecionada
-          const optimizedPhoto = await compressImage(rawPhotoDataUrl);
-          onUpdate({ ...editingStudent, nome: data.nome, turma: data.turma, fotoUrl: optimizedPhoto, customData });
-          setIsDialogOpen(false);
-          setEditingStudent(null);
-          setIsSubmitting(false);
+          updateData.fotoUrl = await compressImage(e.target?.result as string);
+          onUpdate(updateData);
+          finalizeEdit();
         };
         reader.readAsDataURL(file);
       } else {
-        onUpdate({ ...editingStudent, nome: data.nome, turma: data.turma, customData });
-        setIsDialogOpen(false);
-        setEditingStudent(null);
-        setIsSubmitting(false);
+        onUpdate(updateData);
+        finalizeEdit();
       }
     } catch (error) {
       console.error(error);
@@ -128,69 +111,84 @@ export default function StudentList({ students, onUpdate, onDelete, badgeStyle }
     }
   };
 
+  const finalizeEdit = () => {
+    setIsDialogOpen(false);
+    setEditingStudent(null);
+    setIsSubmitting(false);
+  };
+
   if (students.length === 0) {
-    return <p className="text-muted-foreground text-center">Nenhum aluno cadastrado.</p>;
+    return <p className="text-muted-foreground text-center py-8">Nenhum aluno cadastrado.</p>;
   }
 
   return (
     <>
-      <div className="border rounded-lg">
+      <div className="border rounded-lg overflow-hidden">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-muted/50">
             <TableRow>
-              <TableHead>Foto</TableHead>
+              <TableHead className="w-[80px]">Foto</TableHead>
               <TableHead>Nome</TableHead>
               <TableHead>Turma</TableHead>
+              <TableHead>Design Aplicado</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {students.map((student) => (
-              <TableRow key={student.id}>
-                <TableCell>
-                  <Avatar>
-                    <AvatarImage src={student.fotoUrl} alt={student.nome} />
-                    <AvatarFallback>{student.nome.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                </TableCell>
-                <TableCell className="font-medium">{student.nome}</TableCell>
-                <TableCell>{student.turma}</TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" onClick={() => handleEditClick(student)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Esta ação não pode ser desfeita. Isso removerá permanentemente os dados do aluno do banco de dados.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => onDelete(student.id)} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </TableCell>
-              </TableRow>
-            ))}
+            {students.map((student) => {
+              const model = models.find(m => m.id === student.modeloId);
+              return (
+                <TableRow key={student.id}>
+                  <TableCell>
+                    <Avatar className="h-10 w-10 border">
+                      <AvatarImage src={student.fotoUrl} alt={student.nome} className="object-cover" />
+                      <AvatarFallback>{student.nome.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                  </TableCell>
+                  <TableCell className="font-medium">{student.nome}</TableCell>
+                  <TableCell>{student.turma}</TableCell>
+                  <TableCell>
+                    {model ? (
+                      <Badge variant="secondary" className="gap-1">
+                        <Layout size={10} />
+                        {model.nomeModelo}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Padrão</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" onClick={() => handleEditClick(student)} className="h-8 w-8">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remover aluno?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Os dados de {student.nome} serão excluídos permanentemente.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => onDelete(student.id)} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
 
-       <Dialog open={isDialogOpen} onOpenChange={(open) => {
-         if (!open) {
-           setEditingStudent(null);
-         }
-         setIsDialogOpen(open);
-       }}>
+       <Dialog open={isDialogOpen} onOpenChange={(open) => !open && finalizeEdit()}>
         {editingStudent && (
             <DialogContent>
             <DialogHeader>
@@ -209,17 +207,41 @@ export default function StudentList({ students, onUpdate, onDelete, badgeStyle }
                     </FormItem>
                     )}
                 />
-                <FormField
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="turma"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Turma</FormLabel>
+                            <FormControl><Input {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
                     control={form.control}
-                    name="turma"
+                    name="modeloId"
                     render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Turma</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
+                        <FormItem>
+                        <FormLabel>Modelo de Crachá</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Escolha um design" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {models.map(m => (
+                                    <SelectItem key={m.id} value={m.id}>{m.nomeModelo}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         <FormMessage />
-                    </FormItem>
+                        </FormItem>
                     )}
-                />
+                    />
+                </div>
                 <FormField
                     control={form.control}
                     name="fotoUrl"
@@ -231,23 +253,7 @@ export default function StudentList({ students, onUpdate, onDelete, badgeStyle }
                     </FormItem>
                     )}
                 />
-                {badgeStyle.customFields.map((field) => (
-                    <FormField
-                        key={field.id}
-                        control={form.control}
-                        name={field.id}
-                        render={({ field: formField }) => (
-                        <FormItem>
-                            <FormLabel>{field.label}</FormLabel>
-                            <FormControl>
-                            <Input placeholder={`Digite o ${field.label.toLowerCase()}`} {...formField} value={formField.value || ''}/>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                ))}
-                <DialogFooter>
+                <DialogFooter className="pt-4">
                     <DialogClose asChild>
                     <Button type="button" variant="secondary">Cancelar</Button>
                     </DialogClose>
