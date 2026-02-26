@@ -81,10 +81,11 @@ export default function CustomizeCard({ activeModel, onSaveModel, onReset }: Cus
     reader.onload = async (e) => {
       const rawDataUrl = e.target?.result as string;
       try {
+        // Redimensiona o fundo para o tamanho base do crachá para economizar espaço no banco
         const optimizedBackground = await compressImage(rawDataUrl, 1063, 768, 0.7);
         setBackground(optimizedBackground);
       } catch (error) {
-        toast({ variant: "destructive", title: "Erro na imagem" });
+        toast({ variant: "destructive", title: "Erro na imagem", description: "Não foi possível processar o fundo." });
       } finally {
         setIsOptimizing(false);
       }

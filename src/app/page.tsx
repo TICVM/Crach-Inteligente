@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { FileDown, Printer, Loader2, Cloud, RefreshCw } from "lucide-react";
 import { type BadgeStyleConfig, defaultBadgeStyle } from "@/lib/badge-styles";
 import { useFirestore, useCollection, useAuth, useMemoFirebase, useUser } from "@/firebase";
-import { deleteDocumentNonBlocking, updateDocumentNonBlocking, setDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { deleteDocumentNonBlocking, updateDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { collection, doc } from "firebase/firestore";
 import { signInAnonymously } from "firebase/auth";
 
@@ -57,7 +57,7 @@ export default function Home() {
   const { data: modelsData, isLoading: isModelsLoading } = useCollection<BadgeModel>(modelosCollection);
   const models = modelsData || [];
 
-  // Seleciona um modelo padrão se não houver um ativo
+  // Seleciona um modelo padrão se não houver um ativo e houver modelos salvos
   useEffect(() => {
     if (!activeModel && models.length > 0) {
       setActiveModel(models[0]);
@@ -70,7 +70,7 @@ export default function Home() {
       ...student,
       modeloId: activeModel?.id || ""
     });
-    toast({ title: "Aluno adicionado!" });
+    toast({ title: "Aluno adicionado!", description: `Vinculado ao modelo: ${activeModel?.nomeModelo || 'Padrão'}` });
   };
 
   const updateStudent = (updatedStudent: Student) => {
@@ -94,14 +94,15 @@ export default function Home() {
           modeloId: activeModel?.id || ""
         });
      });
-     toast({ title: "Importação concluída!", description: `${newStudents.length} alunos salvos.` });
+     toast({ title: "Importação concluída!", description: `${newStudents.length} alunos salvos com o modelo atual.` });
   };
 
   const handleSaveModel = (modelName: string, background: string, style: BadgeStyleConfig) => {
-    if (!modelosCollection || !user) return;
+    if (!modelosCollection || !user || !firestore) return;
     
     if (activeModel?.id) {
-      const modelDocRef = doc(firestore!, 'modelosCracha', activeModel.id);
+      // Atualizar modelo existente
+      const modelDocRef = doc(firestore, 'modelosCracha', activeModel.id);
       updateDocumentNonBlocking(modelDocRef, {
         nomeModelo: modelName,
         fundoCrachaUrl: background,
@@ -109,6 +110,7 @@ export default function Home() {
       });
       toast({ title: "Modelo atualizado!" });
     } else {
+      // Criar novo modelo
       addDocumentNonBlocking(modelosCollection, {
         nomeModelo: modelName,
         fundoCrachaUrl: background,
@@ -130,7 +132,8 @@ export default function Home() {
 
   const handleDeleteModel = (modelId: string) => {
     if (!firestore) return;
-    deleteDocumentNonBlocking(doc(firestore, 'modelosCracha', modelId));
+    const modelDocRef = doc(firestore, 'modelosCracha', modelId);
+    deleteDocumentNonBlocking(modelDocRef);
     if (activeModel?.id === modelId) setActiveModel(null);
     toast({ title: "Modelo removido." });
   };
@@ -156,6 +159,8 @@ export default function Home() {
     }
     setIsPdfLoading(true);
     try {
+      // Aqui poderíamos iterar sobre cada aluno e buscar seu modelo específico,
+      // mas para esta versão, geramos todos com o modelo ATIVO para garantir performance.
       await generatePdf(students, activeModel.fundoCrachaUrl, activeModel.badgeStyle);
       toast({ title: "PDF gerado com sucesso!" });
     } catch (error) {
@@ -228,7 +233,12 @@ export default function Home() {
                         <span className="text-sm text-muted-foreground">Carregando dados...</span>
                       </div>
                     ) : students.length > 0 ? (
-                      <StudentList students={students} onUpdate={updateStudent} onDelete={deleteStudent} badgeStyle={activeModel?.badgeStyle || defaultBadgeStyle}/>
+                      <StudentList 
+                        students={students} 
+                        onUpdate={updateStudent} 
+                        onDelete={deleteStudent} 
+                        badgeStyle={activeModel?.badgeStyle || defaultBadgeStyle}
+                      />
                     ) : (
                       <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed">
                         Nenhum aluno cadastrado para este lote.
