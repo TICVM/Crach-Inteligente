@@ -144,213 +144,211 @@ export default function StudentList({
     );
   }
 
-  if (viewMode === 'grid') {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {students.map((student) => {
-          const model = models.find(m => m.id === student.modeloId);
-          const isEnabled = student.enabled !== false;
-          return (
-            <div key={student.id} className={`relative group border rounded-lg overflow-hidden transition-all ${!isEnabled ? 'opacity-40 grayscale-[0.5]' : ''}`}>
-              <StudentBadge 
-                student={student} 
-                background={model?.fundoCrachaUrl || currentLiveBackground || ''} 
-                styles={model?.badgeStyle || currentLiveStyle || ({} as BadgeStyleConfig)} 
-              />
-              <div className="absolute top-2 left-2 z-30">
-                 <Button 
-                    variant={isEnabled ? "default" : "outline"} 
-                    size="sm" 
-                    className="h-8 gap-2 bg-white text-black hover:bg-white/90 shadow-lg"
-                    onClick={() => toggleStudentEnabled(student, !isEnabled)}
-                  >
-                    {isEnabled ? <CheckCircle2 size={16} className="text-green-500" /> : <Circle size={16} />}
-                    {isEnabled ? "Ativo" : "Inativo"}
-                  </Button>
-              </div>
-              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-30">
-                <Button size="icon" variant="secondary" className="h-8 w-8 shadow-md" onClick={() => handleEditClick(student)}>
-                  <Pencil size={14} />
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button size="icon" variant="destructive" className="h-8 w-8 shadow-md">
-                      <Trash2 size={14} />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Excluir Aluno?</AlertDialogTitle>
-                      <AlertDialogDescription>Remover {student.nome} permanentemente.</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Não</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => onDelete(student.id)}>Sim, Excluir</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
   return (
     <>
-      <div className="border rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader className="bg-muted/50">
-            <TableRow>
-              <TableHead className="w-[50px]"></TableHead>
-              <TableHead className="w-[80px]">Foto</TableHead>
-              <TableHead>Nome</TableHead>
-              <TableHead>Turma</TableHead>
-              <TableHead>Design Aplicado</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {students.map((student) => {
-              const model = models.find(m => m.id === student.modeloId);
-              const isEnabled = student.enabled !== false;
-              return (
-                <TableRow key={student.id} className={!isEnabled ? "opacity-50" : ""}>
-                  <TableCell>
-                    <Checkbox 
-                      checked={isEnabled} 
-                      onCheckedChange={(checked) => toggleStudentEnabled(student, checked as boolean)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Avatar className="h-10 w-10 border">
-                      <AvatarImage src={student.fotoUrl} alt={student.nome} className="object-cover" />
-                      <AvatarFallback>{student.nome.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                  </TableCell>
-                  <TableCell className="font-medium">{student.nome}</TableCell>
-                  <TableCell>{student.turma}</TableCell>
-                  <TableCell>
-                    {model ? (
-                      <Badge variant="secondary" className="gap-1">
-                        <Layout size={10} />
-                        {model.nomeModelo}
-                      </Badge>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Padrão</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleEditClick(student)} className="h-8 w-8">
-                      <Pencil className="h-4 w-4" />
+      {viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {students.map((student) => {
+            const model = models.find(m => m.id === student.modeloId);
+            const isEnabled = student.enabled !== false;
+            return (
+              <div key={student.id} className={`relative group border rounded-lg overflow-hidden transition-all ${!isEnabled ? 'opacity-40 grayscale-[0.5]' : ''}`}>
+                <StudentBadge 
+                  student={student} 
+                  background={model?.fundoCrachaUrl || currentLiveBackground || ''} 
+                  styles={model?.badgeStyle || currentLiveStyle || ({} as BadgeStyleConfig)} 
+                />
+                <div className="absolute top-2 left-2 z-30">
+                  <Button 
+                      variant={isEnabled ? "default" : "outline"} 
+                      size="sm" 
+                      className="h-8 gap-2 bg-white text-black hover:bg-white/90 shadow-lg"
+                      onClick={() => toggleStudentEnabled(student, !isEnabled)}
+                    >
+                      {isEnabled ? <CheckCircle2 size={16} className="text-green-500" /> : <Circle size={16} />}
+                      {isEnabled ? "Ativo" : "Inativo"}
                     </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Remover aluno?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Os dados de {student.nome} serão excluídos permanentemente.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => onDelete(student.id)} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
+                </div>
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-30">
+                  <Button size="icon" variant="secondary" className="h-8 w-8 shadow-md" onClick={() => handleEditClick(student)}>
+                    <Pencil size={14} />
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button size="icon" variant="destructive" className="h-8 w-8 shadow-md">
+                        <Trash2 size={14} />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir Aluno?</AlertDialogTitle>
+                        <AlertDialogDescription>Remover {student.nome} permanentemente.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Não</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => onDelete(student.id)}>Sim, Excluir</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader className="bg-muted/50">
+              <TableRow>
+                <TableHead className="w-[50px]"></TableHead>
+                <TableHead className="w-[80px]">Foto</TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead>Turma</TableHead>
+                <TableHead>Design Aplicado</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {students.map((student) => {
+                const model = models.find(m => m.id === student.modeloId);
+                const isEnabled = student.enabled !== false;
+                return (
+                  <TableRow key={student.id} className={!isEnabled ? "opacity-50" : ""}>
+                    <TableCell>
+                      <Checkbox 
+                        checked={isEnabled} 
+                        onCheckedChange={(checked) => toggleStudentEnabled(student, checked as boolean)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Avatar className="h-10 w-10 border">
+                        <AvatarImage src={student.fotoUrl} alt={student.nome} className="object-cover" />
+                        <AvatarFallback>{student.nome.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                    </TableCell>
+                    <TableCell className="font-medium">{student.nome}</TableCell>
+                    <TableCell>{student.turma}</TableCell>
+                    <TableCell>
+                      {model ? (
+                        <Badge variant="secondary" className="gap-1">
+                          <Layout size={10} />
+                          {model.nomeModelo}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Padrão</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" onClick={() => handleEditClick(student)} className="h-8 w-8">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remover aluno?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Os dados de {student.nome} serão excluídos permanentemente.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => onDelete(student.id)} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
-       <Dialog open={isDialogOpen} onOpenChange={(open) => !open && finalizeEdit()}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => !open && finalizeEdit()}>
         {editingStudent && (
-            <DialogContent>
+          <DialogContent>
             <DialogHeader>
-                <DialogTitle>Editar Aluno</DialogTitle>
+              <DialogTitle>Editar Aluno</DialogTitle>
             </DialogHeader>
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
-                    control={form.control}
-                    name="nome"
-                    render={({ field }) => (
+                  control={form.control}
+                  name="nome"
+                  render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Nome</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
+                      <FormLabel>Nome</FormLabel>
+                      <FormControl><Input {...field} /></FormControl>
+                      <FormMessage />
                     </FormItem>
-                    )}
+                  )}
                 />
                 <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                        control={form.control}
-                        name="turma"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Turma</FormLabel>
-                            <FormControl><Input {...field} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
+                  <FormField
+                    control={form.control}
+                    name="turma"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Turma</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
                     control={form.control}
                     name="modeloId"
                     render={({ field }) => (
-                        <FormItem>
+                      <FormItem>
                         <FormLabel>Modelo de Crachá</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
+                          <FormControl>
                             <SelectTrigger>
-                                <SelectValue placeholder="Escolha um design" />
+                              <SelectValue placeholder="Escolha um design" />
                             </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                {models.map(m => (
-                                    <SelectItem key={m.id} value={m.id}>{m.nomeModelo}</SelectItem>
-                                ))}
-                            </SelectContent>
+                          </FormControl>
+                          <SelectContent>
+                            {models.map(m => (
+                              <SelectItem key={m.id} value={m.id}>{m.nomeModelo}</SelectItem>
+                            ))}
+                          </SelectContent>
                         </Select>
                         <FormMessage />
-                        </FormItem>
+                      </FormItem>
                     )}
-                    />
+                  />
                 </div>
                 <FormField
-                    control={form.control}
-                    name="fotoUrl"
-                    render={() => (
+                  control={form.control}
+                  name="fotoUrl"
+                  render={() => (
                     <FormItem>
-                        <FormLabel>Nova Foto (opcional)</FormLabel>
-                        <FormControl><Input type="file" accept="image/*" {...photoRef} /></FormControl>
-                        <FormMessage />
+                      <FormLabel>Nova Foto (opcional)</FormLabel>
+                      <FormControl><Input type="file" accept="image/*" {...photoRef} /></FormControl>
+                      <FormMessage />
                     </FormItem>
-                    )}
+                  )}
                 />
                 <DialogFooter className="pt-4">
-                    <DialogClose asChild>
+                  <DialogClose asChild>
                     <Button type="button" variant="secondary">Cancelar</Button>
-                    </DialogClose>
-                    <Button type="submit" disabled={isSubmitting}>
-                      {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : null}
-                      Salvar Alterações
-                    </Button>
+                  </DialogClose>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : null}
+                    Salvar Alterações
+                  </Button>
                 </DialogFooter>
-                </form>
+              </form>
             </Form>
-            </DialogContent>
+          </DialogContent>
         )}
-       </Dialog>
+      </Dialog>
     </>
   );
 }
