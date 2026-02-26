@@ -5,10 +5,10 @@ Sistema avançado para criação, gestão e geração de crachás estudantis per
 ## 🚀 Funcionalidades Principais
 
 - **Editor de Design**: Ajuste posições, cores, tamanhos de fonte e fundos em tempo real com preview instantâneo.
-- **Importação em Massa**: Envie uma planilha Excel (.xlsx) e as fotos dos alunos para gerar dezenas de crachás de uma só vez.
-- **Gestão Inteligente**: Busca por nome, filtros por turma e controle individual de quem deve ser incluído na impressão (Ativos/Inativos).
-- **Exportação Profissional**: Geração de PDF calibrado para papel A4 (2 colunas x 4 linhas) com ajustes milimétricos de fonte e alinhamento.
-- **Persistência na Nuvem**: Sincronização automática com Firebase Firestore para que você nunca perca seus dados ou modelos de design.
+- **Importação em Massa**: Envie uma planilha Excel (.xlsx) e as fotos dos alunos para gerar dezenas de crachás de uma só vez, com detecção automática de cabeçalho.
+- **Gestão Inteligente**: Busca por nome, filtros por turma e visualização apenas de alunos ativos para impressão.
+- **Exportação Profissional**: Geração de PDF calibrado para papel A4 (2 colunas x 4 linhas) com ajustes milimétricos de fonte e alinhamento, incluindo proteção contra transbordo de texto.
+- **Persistência na Nuvem**: Sincronização automática com Firebase Firestore.
 
 ## 🛠️ Tecnologias Utilizadas
 
