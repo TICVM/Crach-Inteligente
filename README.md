@@ -19,16 +19,28 @@ Sistema avançado para criação, gestão e geração de crachás estudantis per
 
 ## 📦 Como Publicar no GitHub
 
-Para subir este código para o seu repositório, execute estes comandos no seu terminal:
+Para subir todo o código para o seu repositório, abra o **Terminal** no editor e execute estes comandos:
 
-1. No terminal, execute:
-
+1. Inicie o git e prepare os arquivos:
 ```bash
 git init
 git add .
 git commit -m "Initial commit: Crachá Inteligente completo"
+```
+
+2. Conecte ao seu repositório (se der erro de "remote origin already exists", use o comando do passo 3):
+```bash
 git branch -M main
 git remote add origin https://github.com/TICVM/Crach-Inteligente.git
+```
+
+3. **Caso o comando acima falhe** (se você já tinha tentado antes):
+```bash
+git remote set-url origin https://github.com/TICVM/Crach-Inteligente.git
+```
+
+4. Envie os arquivos:
+```bash
 git push -u origin main
 ```
 
