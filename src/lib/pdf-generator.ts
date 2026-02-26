@@ -6,6 +6,7 @@ const BADGE_BASE_WIDTH = 1063;
 const BADGE_BASE_HEIGHT = 768;
 
 async function toDataURL(url: string): Promise<string> {
+    if (!url) return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
     if (url.startsWith('data:')) return url;
     
     try {
@@ -42,7 +43,7 @@ export const generatePdf = async (
 ) => {
     const a4 = { width: 210, height: 297 };
     const badgesPerLine = 2;
-    const badgesPerColumn = 3; 
+    const badgesPerColumn = 3; // 2x3 = 6 por folha
     const totalPerPage = badgesPerLine * badgesPerColumn;
     const marginX = 10;
     const marginY = 15;
@@ -62,8 +63,9 @@ export const generatePdf = async (
     const pxToMmY = badgeHeight / BADGE_BASE_HEIGHT;
     
     const renderTextOnPdf = (text: string, style: TextStyle, x: number, y: number) => {
-        if (!text) return;
+        if (!text || !style) return;
 
+        // Desenhar fundo do texto
         const bgRgb = hexToRgb(style.backgroundColor);
         const bgOpacity = typeof style.backgroundOpacity === 'number' ? style.backgroundOpacity : 0;
         
@@ -82,11 +84,13 @@ export const generatePdf = async (
             pdf.setGState(new (pdf as any).GState({ opacity: 1 }));
         }
 
+        // Configurar cor da fonte
         const textColorRgb = hexToRgb(style.color);
         if(textColorRgb) {
           pdf.setTextColor(textColorRgb.r, textColorRgb.g, textColorRgb.b);
         }
 
+        // Calcular tamanho da fonte em pt
         const fontSizeMm = (style.fontSize || 24) * pxToMmY;
         const pdfFontSizePt = fontSizeMm * 2.83465;
         
@@ -97,23 +101,37 @@ export const generatePdf = async (
         const horizontalOffset = (style.paddingLeft || 0) * pxToMmX;
         const verticalOffset = (style.paddingTop || 0) * pxToMmY;
         
-        const textX = x + (style.x || 0) * pxToMmX + (style.textAlign === 'center' ? (style.width || 0) * pxToMmX / 2 : style.textAlign === 'right' ? (style.width || 0) * pxToMmX - textPaddingX : textPaddingX) + horizontalOffset;
-        const textY = y + ((style.y || 0) + (style.height || 0) / 2) * pxToMmY + (fontSizeMm * 0.3) + verticalOffset;
+        // Calcular posição centralizada ou alinhada
+        let textX = x + (style.x || 0) * pxToMmX + horizontalOffset;
+        if (style.textAlign === 'center') {
+            textX += (style.width || 0) * pxToMmX / 2;
+        } else if (style.textAlign === 'right') {
+            textX += (style.width || 0) * pxToMmX - textPaddingX;
+        } else {
+            textX += textPaddingX;
+        }
 
-        // Garante que as coordenadas sejam números válidos
-        const safeX = isNaN(textX) ? x : textX;
-        const safeY = isNaN(textY) ? y : textY;
+        const textY = y + ((style.y || 0) + (style.height || 0) / 2) * pxToMmY + (fontSizeMm * 0.1) + verticalOffset;
 
-        pdf.text(
-            String(text),
-            safeX,
-            safeY,
-            { 
-              maxWidth: (style.width || 100) * pxToMmX - (textPaddingX * 2), 
-              align: (style.textAlign || 'left') as any,
-              baseline: 'middle'
-            }
-        );
+        // Proteção contra NaN
+        const safeX = isFinite(textX) ? textX : x;
+        const safeY = isFinite(textY) ? textY : y;
+        const safeWidth = isFinite((style.width || 100) * pxToMmX) ? (style.width || 100) * pxToMmX - (textPaddingX * 2) : 10;
+
+        try {
+            pdf.text(
+                String(text),
+                safeX,
+                safeY,
+                { 
+                    maxWidth: safeWidth, 
+                    align: (style.textAlign || 'left') as any,
+                    baseline: 'middle'
+                }
+            );
+        } catch (err) {
+            console.error("Erro ao renderizar texto no jsPDF:", err);
+        }
     };
 
     const backgroundCache: Record<string, string> = {};
@@ -135,6 +153,7 @@ export const generatePdf = async (
         const currentBackground = studentModel?.fundoCrachaUrl || fallbackBackground;
         const currentStyle = studentModel?.badgeStyle || fallbackStyle;
 
+        // Fundo
         try {
             if (!backgroundCache[currentBackground]) {
                 backgroundCache[currentBackground] = await toDataURL(currentBackground);
@@ -144,6 +163,7 @@ export const generatePdf = async (
             console.error("Erro ao adicionar fundo no PDF", e);
         }
 
+        // Foto do Aluno
         if (student.fotoUrl) {
           try {
             const studentPhotoDataUrl = await toDataURL(student.fotoUrl);
@@ -159,6 +179,7 @@ export const generatePdf = async (
           }
         }
 
+        // Borda da foto
         if (currentStyle.photo.hasBorder && (currentStyle.photo.borderWidth || 0) > 0) {
             const borderColorRgb = hexToRgb(currentStyle.photo.borderColor);
             if (borderColorRgb) {
@@ -176,9 +197,11 @@ export const generatePdf = async (
             }
         }
 
+        // Textos
         renderTextOnPdf(student.nome, currentStyle.name, x, y);
         renderTextOnPdf(student.turma, currentStyle.turma, x, y);
         
+        // Campos Personalizados
         if (currentStyle.customFields) {
             currentStyle.customFields.forEach(field => {
                 const value = student.customData?.[field.id];

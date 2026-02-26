@@ -81,12 +81,8 @@
     background: white !important;
   }
 
-  /* Esconde TUDO exceto a área de impressão */
-  body > *:not(#printable-area) {
-    display: none !important;
-  }
-  
-  main, header, footer, .no-print, nav, [role="region"] {
+  /* Ocultar elementos que não são da área de impressão de forma segura */
+  .no-print, header, footer, main, nav, aside, [role="region"], .toaster-container {
     display: none !important;
   }
 
@@ -95,7 +91,7 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: 190mm; /* A4 width (210mm) - margins (20mm) */
+    width: 100%;
     margin: 0;
     padding: 0;
   }
@@ -103,7 +99,7 @@
   .print-grid {
     display: grid;
     grid-template-columns: repeat(2, 90mm);
-    grid-template-rows: repeat(3, 65mm); /* 3 linhas para 6 crachás */
+    grid-template-rows: repeat(3, 65mm); /* 3 linhas = 6 crachás por folha */
     gap: 10mm 10mm;
     justify-content: center;
     align-content: start;
