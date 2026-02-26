@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -14,7 +13,7 @@ import StudentList from "@/components/student-list";
 import StudentBadge from "@/components/student-badge";
 import ModelsListCard from "@/components/models-list-card";
 import { Button } from "@/components/ui/button";
-import { FileDown, Printer, Loader2, ChevronLeft, ChevronRight, LayoutGrid, List, CheckSquare, Square, Users, FilterX, Settings2, Sparkles } from "lucide-react";
+import { FileDown, Printer, Loader2, ChevronLeft, ChevronRight, LayoutGrid, List, CheckSquare, Square, Users, FilterX, Settings2, Sparkles, PencilLine, ArrowRightLeft } from "lucide-react";
 import { type BadgeStyleConfig, defaultBadgeStyle } from "@/lib/badge-styles";
 import { useFirestore, useCollection, useAuth, useMemoFirebase, useUser } from "@/firebase";
 import { deleteDocumentNonBlocking, updateDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
@@ -22,6 +21,7 @@ import { collection, doc } from "firebase/firestore";
 import { signInAnonymously } from "firebase/auth";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 
 export default function Home() {
   const [activeModel, setActiveModel] = useState<BadgeModel | null>(null);
@@ -36,6 +36,7 @@ export default function Home() {
   const [previewIndex, setPreviewIndex] = useState(0);
   const [filterTurma, setFilterTurma] = useState<string | null>(null);
   const [bulkModelId, setBulkModelId] = useState<string>("default");
+  const [bulkNewTurma, setBulkNewTurma] = useState<string>("");
   
   const { toast } = useToast();
   const firestore = useFirestore();
@@ -196,6 +197,24 @@ export default function Home() {
     });
 
     toast({ title: "Design Atualizado!", description: `O modelo '${modelName}' foi aplicado a ${enabledStudents.length} alunos.` });
+  };
+
+  const handleBulkUpdateTurma = () => {
+    if (enabledStudents.length === 0) {
+      toast({ variant: "destructive", title: "Atenção", description: "Nenhum aluno selecionado para alteração de turma." });
+      return;
+    }
+    if (!bulkNewTurma.trim()) {
+      toast({ variant: "destructive", title: "Atenção", description: "Informe o nome da nova turma." });
+      return;
+    }
+
+    enabledStudents.forEach(student => {
+      updateStudent({ ...student, turma: bulkNewTurma.trim() });
+    });
+
+    toast({ title: "Turma Atualizada!", description: `${enabledStudents.length} alunos movidos para a turma '${bulkNewTurma}'.` });
+    setBulkNewTurma("");
   };
 
   const handleGeneratePdf = async () => {
@@ -418,33 +437,60 @@ export default function Home() {
                           </div>
                         </div>
 
-                        {/* Nova Seção: Alteração de Design em Massa */}
-                        <div className="bg-primary/5 p-4 rounded-lg border border-primary/10 flex flex-col sm:flex-row items-center gap-4">
-                          <div className="flex items-center gap-2 shrink-0">
-                            <Sparkles size={16} className="text-primary" />
-                            <span className="text-xs font-bold uppercase tracking-tight">Alteração Rápida de Design</span>
+                        {/* Alteração de Design e Turma em Massa */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Alteração Rápida de Design */}
+                          <div className="bg-primary/5 p-4 rounded-lg border border-primary/10 flex flex-col gap-3">
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Sparkles size={16} className="text-primary" />
+                              <span className="text-xs font-bold uppercase tracking-tight">Design em Massa</span>
+                            </div>
+                            <div className="flex gap-2 items-center">
+                              <Select onValueChange={setBulkModelId} value={bulkModelId}>
+                                <SelectTrigger className="h-9 text-xs">
+                                  <SelectValue placeholder="Escolha um design" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="default">Design Aplicado (Padrão)</SelectItem>
+                                  {models.map(m => (
+                                    <SelectItem key={m.id} value={m.id}>{m.nomeModelo}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button 
+                                size="sm" 
+                                onClick={handleBulkApplyModel} 
+                                disabled={enabledStudents.length === 0}
+                                className="h-9 px-3 gap-2 whitespace-nowrap"
+                              >
+                                <Settings2 size={14} /> Aplicar
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex flex-1 w-full gap-2 items-center">
-                            <Select onValueChange={setBulkModelId} value={bulkModelId}>
-                              <SelectTrigger className="h-9 text-xs">
-                                <SelectValue placeholder="Escolha um design" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="default">Design Aplicado (Padrão)</SelectItem>
-                                {models.map(m => (
-                                  <SelectItem key={m.id} value={m.id}>{m.nomeModelo}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Button 
-                              size="sm" 
-                              onClick={handleBulkApplyModel} 
-                              disabled={enabledStudents.length === 0}
-                              className="h-9 px-4 gap-2 whitespace-nowrap"
-                            >
-                              <Settings2 size={14} />
-                              Aplicar aos {enabledStudents.length} Selecionados
-                            </Button>
+
+                          {/* Alteração Rápida de Turma */}
+                          <div className="bg-accent/5 p-4 rounded-lg border border-accent/10 flex flex-col gap-3">
+                            <div className="flex items-center gap-2 shrink-0">
+                              <ArrowRightLeft size={16} className="text-accent" />
+                              <span className="text-xs font-bold uppercase tracking-tight">Mover de Turma</span>
+                            </div>
+                            <div className="flex gap-2 items-center">
+                              <Input 
+                                placeholder="Nova turma ou existente" 
+                                value={bulkNewTurma}
+                                onChange={(e) => setBulkNewTurma(e.target.value)}
+                                className="h-9 text-xs"
+                              />
+                              <Button 
+                                size="sm" 
+                                variant="secondary"
+                                onClick={handleBulkUpdateTurma} 
+                                disabled={enabledStudents.length === 0 || !bulkNewTurma.trim()}
+                                className="h-9 px-3 gap-2 whitespace-nowrap"
+                              >
+                                <ArrowRightLeft size={14} /> Mover
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>
