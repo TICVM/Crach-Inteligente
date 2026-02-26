@@ -28,6 +28,9 @@ export default function StudentBadge({ student, background, styles }: StudentBad
     const rgb = hexToRgb(style.backgroundColor);
     const rgba = rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${style.backgroundOpacity})` : 'transparent';
     
+    // Scale font based on badge width (responsive)
+    const scaledFontSize = `${(style.fontSize / BADGE_BASE_WIDTH) * 100}cqw`;
+    
     return (
       <div
         className="absolute flex items-center"
@@ -36,13 +39,14 @@ export default function StudentBadge({ student, background, styles }: StudentBad
           top: `${(style.y / BADGE_BASE_HEIGHT) * 100}%`,
           width: `${(style.width / BADGE_BASE_WIDTH) * 100}%`,
           height: `${(style.height / BADGE_BASE_HEIGHT) * 100}%`,
-          fontSize: `clamp(0.5rem, ${(style.fontSize / BADGE_BASE_WIDTH) * 100}vw, 2rem)`,
+          fontSize: `clamp(8px, ${scaledFontSize}, 48px)`,
           color: style.color,
           fontWeight: style.fontWeight,
           textAlign: style.textAlign,
           backgroundColor: rgba,
           borderRadius: `${style.backgroundRadius}px`,
-          padding: '0 0.5em'
+          padding: '0 0.5em',
+          justifyContent: style.textAlign === 'center' ? 'center' : style.textAlign === 'right' ? 'flex-end' : 'flex-start'
         }}
       >
         <span className="truncate w-full">{text}</span>
@@ -56,8 +60,9 @@ export default function StudentBadge({ student, background, styles }: StudentBad
     width: `${(styles.photo.width / BADGE_BASE_WIDTH) * 100}%`,
     height: `${(styles.photo.height / BADGE_BASE_HEIGHT) * 100}%`,
     borderRadius: `${styles.photo.borderRadius}px`,
-    boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
     boxSizing: 'border-box',
+    zIndex: 5
   };
 
   if (styles.photo.hasBorder && styles.photo.borderWidth > 0) {
@@ -66,29 +71,30 @@ export default function StudentBadge({ student, background, styles }: StudentBad
       ? `rgba(${borderColorRgb.r}, ${borderColorRgb.g}, ${borderColorRgb.b}, ${styles.photo.borderOpacity})`
       : 'transparent';
     
-    photoStyle.border = `${styles.photo.borderWidth}px solid ${borderColorRgba}`;
+    photoStyle.border = `${(styles.photo.borderWidth / BADGE_BASE_WIDTH) * 100}cqw solid ${borderColorRgba}`;
   }
 
   return (
     <div
-      className="relative aspect-[1063/768] w-full overflow-hidden rounded-lg shadow-md bg-card bg-cover bg-center"
+      className="relative aspect-[1063/768] w-full overflow-hidden rounded-xl shadow-xl bg-card bg-cover bg-center border [container-type:size]"
       style={{ backgroundImage: `url(${background})` }}
-      data-ai-hint="school badge"
+      data-ai-hint="crachá estudante"
     >
-      {/* Content Wrapper */}
       <div className="absolute inset-0 z-10">
-        {/* Student Photo */}
         <div
           className="absolute overflow-hidden"
           style={photoStyle}
         >
-          <Image
-            src={student.fotoUrl}
-            alt={`Foto de ${student.nome}`}
-            fill
-            sizes="30vw"
-            className="object-cover"
-          />
+          {student.fotoUrl && (
+            <Image
+              src={student.fotoUrl}
+              alt={`Foto de ${student.nome}`}
+              fill
+              sizes="(max-width: 768px) 50vw, 33vw"
+              className="object-cover"
+              priority={false}
+            />
+          )}
         </div>
 
         {renderText(student.nome, styles.name)}
@@ -96,9 +102,7 @@ export default function StudentBadge({ student, background, styles }: StudentBad
         
         {styles.customFields.map((field) => {
             const value = student.customData?.[field.id];
-            if (!value) {
-                return null;
-            }
+            if (!value) return null;
             return (
                 <div key={field.id}>
                     {renderText(value, field)}

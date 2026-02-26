@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { FileDown, Printer, Loader2 } from "lucide-react";
 import { type BadgeStyleConfig, defaultBadgeStyle } from "@/lib/badge-styles";
 import { useFirestore, useCollection, useDoc, useAuth, useMemoFirebase, useUser } from "@/firebase";
-import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { deleteDocumentNonBlocking, updateDocumentNonBlocking, setDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { collection, doc } from "firebase/firestore";
 import { signInAnonymously } from "firebase/auth";
 
@@ -46,24 +46,25 @@ export default function Home() {
   
   const { data: configData, isLoading: isConfigLoading } = useDoc<any>(configDocRef);
 
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     if (auth && !user && !isAuthLoading) {
       signInAnonymously(auth).catch((error) => {
-        console.error("Anonymous sign-in failed", error);
+        console.error("Falha na autenticação anônima", error);
         toast({
           variant: "destructive",
-          title: "Falha na autenticação",
-          description: "Não foi possível conectar ao serviço de dados.",
+          title: "Falha na conexão",
+          description: "Não foi possível conectar ao banco de dados.",
         });
       });
     }
   }, [auth, user, isAuthLoading, toast]);
 
-
   useEffect(() => {
     if (configData) {
-      // Config exists, load it
       if (configData.badgeStyle) {
         const parsed = configData.badgeStyle;
         const mergedStyle = {
@@ -83,36 +84,31 @@ export default function Home() {
       }
       setBackground(configData.fundoCrachaUrl || PlaceHolderImages.find(img => img.id === 'default-background')?.imageUrl || '');
     } else if (configDocRef && !isConfigLoading && user) {
-        // Config doesn't exist, create it with default values
         const defaultConfig = {
             badgeStyle: defaultBadgeStyle,
             fundoCrachaUrl: PlaceHolderImages.find(img => img.id === 'default-background')?.imageUrl || ''
         };
         setDocumentNonBlocking(configDocRef, defaultConfig, {});
     }
-
-    setIsMounted(true);
   }, [configData, isConfigLoading, user, configDocRef]);
   
-
   useEffect(() => {
-    // Debounced save to Firestore
-    if (isMounted && configDocRef && !isConfigLoading && user) {
+    if (isMounted && configDocRef && !isConfigLoading && user && configData) {
       const handler = setTimeout(() => {
-        updateDocumentNonBlocking(configDocRef, { badgeStyle, fundoCrachaUrl: background });
-      }, 1000); // 1 second debounce
+        // Only update if there's an actual change to avoid loops
+        if (JSON.stringify(configData.badgeStyle) !== JSON.stringify(badgeStyle) || configData.fundoCrachaUrl !== background) {
+          updateDocumentNonBlocking(configDocRef, { badgeStyle, fundoCrachaUrl: background });
+        }
+      }, 1500);
 
-      return () => {
-        clearTimeout(handler);
-      };
+      return () => clearTimeout(handler);
     }
-  }, [badgeStyle, background, isMounted, configDocRef, isConfigLoading, user]);
-
+  }, [badgeStyle, background, isMounted, configDocRef, isConfigLoading, user, configData]);
 
   const addStudent = (student: Omit<Student, "id">) => {
     if (!alunosCollection) return;
     addDocumentNonBlocking(alunosCollection, student);
-    toast({ title: "Sucesso!", description: "Aluno adicionado." });
+    toast({ title: "Sucesso!", description: "Aluno adicionado com sucesso." });
   };
 
   const updateStudent = (updatedStudent: Student) => {
@@ -138,7 +134,6 @@ export default function Home() {
      toast({ title: "Sucesso!", description: `${newStudents.length} alunos importados.` });
   };
 
-
   const handlePrint = () => {
     if (students.length === 0) {
       toast({ variant: "destructive", title: "Atenção", description: "Adicione pelo menos um aluno para imprimir." });
@@ -161,23 +156,25 @@ export default function Home() {
     setIsPdfLoading(true);
     try {
       await generatePdf(students, background, badgeStyle);
+      toast({ title: "Sucesso!", description: "PDF gerado e baixado." });
     } catch (error) {
-      console.error("PDF Generation Error:", error);
-      toast({ variant: "destructive", title: "Erro", description: "Ocorreu um erro ao gerar o PDF." });
+      console.error("Erro na geração do PDF:", error);
+      toast({ variant: "destructive", title: "Erro", description: "Ocorreu um erro ao processar o arquivo PDF." });
     } finally {
       setIsPdfLoading(false);
     }
   };
   
-  const isLoading = studentsLoading || isAuthLoading || isConfigLoading;
+  const isLoading = (studentsLoading || isAuthLoading || isConfigLoading) && !isMounted;
 
   return (
     <div className="min-h-screen bg-background">
       <PageHeader />
       <main className="container mx-auto p-4 md:p-8">
-        {isLoading && !isMounted ? (
-            <div className="flex justify-center items-center h-64">
+        {isLoading ? (
+            <div className="flex flex-col justify-center items-center h-64 gap-4">
                 <Loader2 className="animate-spin h-12 w-12 text-primary" />
+                <p className="text-muted-foreground animate-pulse">Carregando dados do sistema...</p>
             </div>
         ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -193,42 +190,49 @@ export default function Home() {
               </div>
 
               <div className="lg:col-span-2 flex flex-col gap-8">
-                <div className="bg-card p-6 rounded-lg shadow-sm no-print">
-                  <h2 className="text-2xl font-bold mb-4 text-primary">Ações</h2>
+                <div className="bg-card p-6 rounded-lg shadow-sm no-print border">
+                  <h2 className="text-xl font-bold mb-4 text-primary flex items-center gap-2">
+                    Ações de Saída
+                  </h2>
                   <div className="flex flex-col sm:flex-row gap-4">
-                     <Button onClick={handleGeneratePdf} disabled={isPdfLoading || students.length === 0}>
-                      {isPdfLoading ? <Loader2 className="animate-spin" /> : <FileDown />}
-                      Gerar PDF
+                     <Button className="flex-1" onClick={handleGeneratePdf} disabled={isPdfLoading || students.length === 0}>
+                      {isPdfLoading ? <Loader2 className="animate-spin mr-2" /> : <FileDown className="mr-2" />}
+                      Exportar para PDF
                     </Button>
-                    <Button onClick={handlePrint} disabled={isPrinting || students.length === 0}>
-                      <Printer />
-                      Impressão
+                    <Button variant="outline" className="flex-1" onClick={handlePrint} disabled={isPrinting || students.length === 0}>
+                      <Printer className="mr-2" />
+                      Imprimir Crachás
                     </Button>
                   </div>
                 </div>
 
-                <div className="bg-card p-6 rounded-lg shadow-sm no-print">
-                    <h2 className="text-2xl font-bold mb-4 text-primary">Alunos Cadastrados</h2>
-                    {(studentsLoading || isAuthLoading) ? <Loader2 className="animate-spin mx-auto"/> : <StudentList students={students} onUpdate={updateStudent} onDelete={deleteStudent} badgeStyle={badgeStyle}/>}
+                <div className="bg-card p-6 rounded-lg shadow-sm border">
+                    <h2 className="text-xl font-bold mb-4 text-primary">Lista de Alunos</h2>
+                    {students.length > 0 ? (
+                      <StudentList students={students} onUpdate={updateStudent} onDelete={deleteStudent} badgeStyle={badgeStyle}/>
+                    ) : (
+                      <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed">
+                        Nenhum aluno cadastrado. Use o formulário lateral ou a importação em massa.
+                      </div>
+                    )}
                 </div>
 
-                <div className="bg-card p-6 rounded-lg shadow-sm no-print">
-                    <h2 className="text-2xl font-bold mb-4 text-primary">Pré-visualização dos Crachás</h2>
-                    {(studentsLoading || isAuthLoading) ? <Loader2 className="animate-spin mx-auto" /> : students.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {students.map((student) => (
+                <div className="bg-card p-6 rounded-lg shadow-sm border no-print">
+                    <h2 className="text-xl font-bold mb-4 text-primary">Pré-visualização do Design</h2>
+                    {students.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {students.slice(0, 4).map((student) => (
                           <StudentBadge key={student.id} student={student} background={background} styles={badgeStyle} />
                         ))}
                       </div>
                     ) : (
-                      <p className="text-muted-foreground">Nenhum aluno adicionado ainda. Os crachás aparecerão aqui.</p>
+                      <p className="text-muted-foreground italic">Cadastre alunos para ver a prévia real aqui.</p>
                     )}
                 </div>
               </div>
             </div>
         )}
 
-        {/* This div is only for printing */}
         <div id="printable-area" className="hidden">
            <div className="print-container">
             {students.map((student) => (
@@ -239,9 +243,12 @@ export default function Home() {
            </div>
         </div>
       </main>
-      <footer className="text-center py-6 text-muted-foreground text-sm no-print">
-        <p>&copy; {new Date().getFullYear()} Crachá Inteligente. Todos os direitos reservados.</p>
-      </footer>
+      
+      {isMounted && (
+        <footer className="text-center py-8 text-muted-foreground text-sm no-print">
+          <p>&copy; {new Date().getFullYear()} Crachá Inteligente. Sistema Profissional para Escolas.</p>
+        </footer>
+      )}
     </div>
   );
 }
