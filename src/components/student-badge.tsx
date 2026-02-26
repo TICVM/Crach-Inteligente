@@ -28,7 +28,6 @@ export default function StudentBadge({ student, background, styles }: StudentBad
     const rgb = hexToRgb(style.backgroundColor);
     const rgba = rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${style.backgroundOpacity})` : 'transparent';
     
-    // Scale font based on badge width (responsive)
     const scaledFontSize = `${(style.fontSize / BADGE_BASE_WIDTH) * 100}cqw`;
     
     return (
@@ -39,14 +38,15 @@ export default function StudentBadge({ student, background, styles }: StudentBad
           top: `${(style.y / BADGE_BASE_HEIGHT) * 100}%`,
           width: `${(style.width / BADGE_BASE_WIDTH) * 100}%`,
           height: `${(style.height / BADGE_BASE_HEIGHT) * 100}%`,
-          fontSize: `clamp(8px, ${scaledFontSize}, 48px)`,
+          fontSize: `clamp(1px, ${scaledFontSize}, 200px)`,
           color: style.color,
           fontWeight: style.fontWeight,
           textAlign: style.textAlign,
           backgroundColor: rgba,
           borderRadius: `${style.backgroundRadius}px`,
           padding: '0 0.5em',
-          justifyContent: style.textAlign === 'center' ? 'center' : style.textAlign === 'right' ? 'flex-end' : 'flex-start'
+          justifyContent: style.textAlign === 'center' ? 'center' : style.textAlign === 'right' ? 'flex-end' : 'flex-start',
+          zIndex: 20
         }}
       >
         <span className="truncate w-full">{text}</span>
@@ -60,9 +60,10 @@ export default function StudentBadge({ student, background, styles }: StudentBad
     width: `${(styles.photo.width / BADGE_BASE_WIDTH) * 100}%`,
     height: `${(styles.photo.height / BADGE_BASE_HEIGHT) * 100}%`,
     borderRadius: `${styles.photo.borderRadius}px`,
-    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
     boxSizing: 'border-box',
-    zIndex: 5
+    zIndex: 10,
+    overflow: 'hidden',
+    position: 'absolute'
   };
 
   if (styles.photo.hasBorder && styles.photo.borderWidth > 0) {
@@ -76,23 +77,31 @@ export default function StudentBadge({ student, background, styles }: StudentBad
 
   return (
     <div
-      className="relative aspect-[1063/768] w-full overflow-hidden rounded-xl shadow-xl bg-card bg-cover bg-center border [container-type:size]"
-      style={{ backgroundImage: `url(${background})` }}
+      className="relative aspect-[1063/768] w-full overflow-hidden rounded-xl shadow-xl bg-card border [container-type:size]"
       data-ai-hint="crachá estudante"
     >
+      {/* Background Image - Real img for print reliability */}
+      <div className="absolute inset-0 z-0">
+        {background && (
+          <Image 
+            src={background} 
+            alt="Badge Background" 
+            fill 
+            className="object-cover" 
+            priority
+          />
+        )}
+      </div>
+
       <div className="absolute inset-0 z-10">
-        <div
-          className="absolute overflow-hidden"
-          style={photoStyle}
-        >
+        <div style={photoStyle}>
           {student.fotoUrl && (
             <Image
               src={student.fotoUrl}
               alt={`Foto de ${student.nome}`}
               fill
-              sizes="(max-width: 768px) 50vw, 33vw"
               className="object-cover"
-              priority={false}
+              unoptimized
             />
           )}
         </div>

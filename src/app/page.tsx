@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -22,7 +21,6 @@ import { collection, doc } from "firebase/firestore";
 import { signInAnonymously } from "firebase/auth";
 
 export default function Home() {
-  // Estados para o editor "Live"
   const [activeModel, setActiveModel] = useState<BadgeModel | null>(null);
   const [liveStyle, setLiveStyle] = useState<BadgeStyleConfig>(defaultBadgeStyle);
   const [liveBackground, setLiveBackground] = useState<string>(PlaceHolderImages.find(img => img.id === 'default-background')?.imageUrl || "");
@@ -46,7 +44,6 @@ export default function Home() {
     }
   }, [auth, user, isAuthLoading]);
 
-  // Coleções
   const alunosCollection = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, 'alunos');
@@ -63,7 +60,13 @@ export default function Home() {
   const students = studentsData || [];
   const models = modelsData || [];
 
-  // Sincroniza o estado "Live" quando um modelo é selecionado na lista
+  // Define um modelo padrão ao carregar se nenhum estiver selecionado
+  useEffect(() => {
+    if (!isModelsLoading && models.length > 0 && !activeModel) {
+      setActiveModel(models[0]);
+    }
+  }, [models, isModelsLoading, activeModel]);
+
   useEffect(() => {
     if (activeModel) {
       setLiveStyle(activeModel.badgeStyle);
@@ -116,12 +119,12 @@ export default function Home() {
     const duplicatedData = {
       nomeModelo: `${model.nomeModelo} (Cópia)`,
       fundoCrachaUrl: model.fundoCrachaUrl,
-      badgeStyle: JSON.parse(JSON.stringify(model.badgeStyle)), // Deep copy
+      badgeStyle: JSON.parse(JSON.stringify(model.badgeStyle)),
       userId: user.uid
     };
 
     addDocumentNonBlocking(modelosCollection, duplicatedData);
-    toast({ title: "Modelo duplicado!", description: "Uma cópia do design foi criada." });
+    toast({ title: "Modelo duplicado!" });
   };
 
   const handleNewModel = () => {
@@ -182,7 +185,7 @@ export default function Home() {
       window.print();
       document.body.classList.remove("print-mode");
       setIsPrinting(false);
-    }, 500);
+    }, 700);
   };
 
   const nextPreview = () => setPreviewIndex((prev) => (prev + 1) % (students.length || 1));
@@ -204,7 +207,7 @@ export default function Home() {
         {isLoading ? (
             <div className="flex flex-col justify-center items-center h-96 gap-4">
                 <Loader2 className="animate-spin h-12 w-12 text-primary" />
-                <p className="text-muted-foreground animate-pulse">Sincronizando banco de dados...</p>
+                <p className="text-muted-foreground animate-pulse">Sincronizando com a nuvem...</p>
             </div>
         ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -245,18 +248,18 @@ export default function Home() {
                   <div className="flex flex-col sm:flex-row gap-4">
                      <Button className="flex-1 shadow-md" onClick={handleGeneratePdf} disabled={isPdfLoading || students.length === 0}>
                       {isPdfLoading ? <Loader2 className="animate-spin mr-2" /> : <FileDown className="mr-2" />}
-                      Gerar PDF Completo
+                      Gerar PDF de Alta Qualidade
                     </Button>
                     <Button variant="outline" className="flex-1" onClick={handlePrint} disabled={isPrinting || students.length === 0}>
                       <Printer className="mr-2" />
-                      Imprimir Crachás
+                      Imprimir em Folha A4
                     </Button>
                   </div>
                 </div>
 
                 <div className="bg-card p-6 rounded-lg shadow-sm border no-print">
                     <div className="flex justify-between items-center mb-4">
-                      <h2 className="text-xl font-bold text-primary">Preview com Dados do Banco</h2>
+                      <h2 className="text-xl font-bold text-primary">Prévia com Dados Reais</h2>
                       {students.length > 1 && (
                         <div className="flex items-center gap-2">
                           <Button variant="ghost" size="icon" onClick={prevPreview}><ChevronLeft /></Button>
@@ -271,8 +274,8 @@ export default function Home() {
                           background={liveBackground} 
                           styles={liveStyle} 
                         />
-                        <p className="mt-4 text-xs text-center text-muted-foreground italic">
-                          Visualizando design "{liveModelName || 'Sem Nome'}" aplicado ao aluno <b>{currentPreviewStudent.nome}</b>.
+                        <p className="mt-4 text-[10px] text-center text-muted-foreground uppercase tracking-wider font-bold">
+                          Design: {liveModelName || 'Edição Livre'} • Visualizando: {currentPreviewStudent.nome}
                         </p>
                     </div>
                 </div>
@@ -281,9 +284,9 @@ export default function Home() {
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                       <div>
                         <h2 className="text-xl font-bold text-primary">Gestão de Alunos</h2>
-                        <p className="text-xs text-muted-foreground">Total: {students.length} alunos cadastrados</p>
+                        <p className="text-xs text-muted-foreground">Total: {students.length} registros</p>
                       </div>
-                      <div className="flex items-center bg-muted p-1 rounded-md">
+                      <div className="flex items-center bg-muted p-1 rounded-md no-print">
                         <Button 
                           variant={viewMode === 'table' ? 'secondary' : 'ghost'} 
                           size="sm" 
@@ -305,7 +308,7 @@ export default function Home() {
                     {studentsLoading ? (
                       <div className="flex flex-col items-center py-12">
                         <Loader2 className="animate-spin mb-2" />
-                        <span className="text-sm text-muted-foreground">Sincronizando...</span>
+                        <span className="text-sm text-muted-foreground">Carregando alunos...</span>
                       </div>
                     ) : (
                       <StudentList 
@@ -323,6 +326,7 @@ export default function Home() {
             </div>
         )}
 
+        {/* Área de Impressão Oculta */}
         <div id="printable-area" className="hidden">
            <div className="print-container">
             {students.map((student) => {
@@ -342,8 +346,8 @@ export default function Home() {
       </main>
       
       {isMounted && (
-        <footer className="text-center py-8 text-muted-foreground text-sm no-print border-t mt-8">
-          <p>&copy; {new Date().getFullYear()} Crachá Inteligente &bull; Dados Dinâmicos e Persistência em Nuvem</p>
+        <footer className="text-center py-8 text-muted-foreground text-[10px] no-print border-t mt-8 uppercase tracking-widest font-bold">
+          <p>&copy; {new Date().getFullYear()} Crachá Inteligente • Sistema de Identificação Estudantil</p>
         </footer>
       )}
     </div>

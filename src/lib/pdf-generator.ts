@@ -1,4 +1,3 @@
-
 import jsPDF from 'jspdf';
 import { type Student, type BadgeModel } from './types';
 import { type BadgeStyleConfig, type TextStyle } from './badge-styles';
@@ -67,13 +66,15 @@ export const generatePdf = async (
         const bgRgb = hexToRgb(style.backgroundColor);
         if (bgRgb && style.backgroundOpacity > 0) {
             pdf.setFillColor(bgRgb.r, bgRgb.g, bgRgb.b);
+            // jsPDF doesn't handle transparency well in roundedRect directly easily without plugins,
+            // but we'll use a simplified version for high quality print.
             pdf.roundedRect(
                 x + style.x * pxToMmX, 
                 y + style.y * pxToMmY, 
                 style.width * pxToMmX, 
                 style.height * pxToMmY, 
                 style.backgroundRadius * pxToMmX, 
-                style.backgroundRadius * pxToMmX, 
+                style.backgroundRadius * pxToMmY, 
                 'F'
             );
         }
@@ -83,11 +84,13 @@ export const generatePdf = async (
           pdf.setTextColor(textColorRgb.r, textColorRgb.g, textColorRgb.b);
         }
 
-        const pdfFontSize = style.fontSize * 0.264583; 
-        pdf.setFontSize(pdfFontSize * 3.5); 
+        // Calibrated font size: 1pt = 0.3527mm. 
+        // We scale the visual pixel size to mm and convert to points for jsPDF
+        const pdfFontSizePt = (style.fontSize * pxToMmX) * 2.83465;
+        pdf.setFontSize(pdfFontSizePt);
         pdf.setFont('helvetica', style.fontWeight);
         
-        const textPaddingX = 10 * pxToMmX;
+        const textPaddingX = 2 * pxToMmX;
         const textX = x + style.x * pxToMmX + (style.textAlign === 'center' ? style.width * pxToMmX / 2 : style.textAlign === 'right' ? style.width * pxToMmX - textPaddingX : textPaddingX);
         const textY = y + (style.y + style.height / 2) * pxToMmY;
 
@@ -103,7 +106,6 @@ export const generatePdf = async (
         );
     };
 
-    // Cache de backgrounds processados para performance
     const backgroundCache: Record<string, string> = {};
 
     for (let i = 0; i < students.length; i++) {
@@ -119,7 +121,6 @@ export const generatePdf = async (
         const x = marginX + col * (badgeWidth + gapX);
         const y = marginY + row * (badgeHeight + gapY);
 
-        // Busca o modelo específico do aluno
         const studentModel = models.find(m => m.id === student.modeloId);
         const currentBackground = studentModel?.fundoCrachaUrl || fallbackBackground;
         const currentStyle = studentModel?.badgeStyle || fallbackStyle;
@@ -128,14 +129,14 @@ export const generatePdf = async (
         if (!backgroundCache[currentBackground]) {
             backgroundCache[currentBackground] = await toDataURL(currentBackground);
         }
-        pdf.addImage(backgroundCache[currentBackground], 'PNG', x, y, badgeWidth, badgeHeight);
+        pdf.addImage(backgroundCache[currentBackground], 'JPEG', x, y, badgeWidth, badgeHeight);
 
         // 2. Add Photo
         if (student.fotoUrl) {
           try {
             const studentPhotoDataUrl = await toDataURL(student.fotoUrl);
             pdf.addImage(
-                studentPhotoDataUrl, 'PNG', 
+                studentPhotoDataUrl, 'JPEG', 
                 x + currentStyle.photo.x * pxToMmX, 
                 y + currentStyle.photo.y * pxToMmY, 
                 currentStyle.photo.width * pxToMmX, 
@@ -152,13 +153,14 @@ export const generatePdf = async (
             if (borderColorRgb) {
                 pdf.setDrawColor(borderColorRgb.r, borderColorRgb.g, borderColorRgb.b);
                 pdf.setLineWidth(currentStyle.photo.borderWidth * pxToMmX);
-                const radius = currentStyle.photo.borderRadius * pxToMmX;
+                const rx = currentStyle.photo.borderRadius * pxToMmX;
+                const ry = currentStyle.photo.borderRadius * pxToMmY;
                 pdf.roundedRect(
                     x + currentStyle.photo.x * pxToMmX, 
                     y + currentStyle.photo.y * pxToMmY, 
                     currentStyle.photo.width * pxToMmX, 
                     currentStyle.photo.height * pxToMmY,
-                    radius, radius, 'S'
+                    rx, ry, 'S'
                 );
             }
         }
@@ -172,5 +174,5 @@ export const generatePdf = async (
         });
     }
     
-    pdf.save('crachas-multi-modelo.pdf');
+    pdf.save('crachas-gerados.pdf');
 };
