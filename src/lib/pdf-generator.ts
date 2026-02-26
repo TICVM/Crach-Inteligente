@@ -43,7 +43,7 @@ export const generatePdf = async (
 ) => {
     const a4 = { width: 210, height: 297 };
     const badgesPerLine = 2;
-    const badgesPerColumn = 4; // Alterado para 4 linhas (2x4 = 8 por folha)
+    const badgesPerColumn = 4; // 8 crachás por folha
     const totalPerPage = badgesPerLine * badgesPerColumn;
     const marginX = 10;
     const marginY = 10;
@@ -65,7 +65,7 @@ export const generatePdf = async (
     const renderTextOnPdf = (text: string, style: TextStyle, x: number, y: number) => {
         if (!text || !style) return;
 
-        // Desenhar fundo do texto
+        // Fundo do texto
         const bgRgb = hexToRgb(style.backgroundColor);
         const bgOpacity = typeof style.backgroundOpacity === 'number' ? style.backgroundOpacity : 0;
         
@@ -84,39 +84,35 @@ export const generatePdf = async (
             pdf.setGState(new (pdf as any).GState({ opacity: 1 }));
         }
 
-        // Configurar cor da fonte
         const textColorRgb = hexToRgb(style.color);
         if(textColorRgb) {
           pdf.setTextColor(textColorRgb.r, textColorRgb.g, textColorRgb.b);
         }
 
-        // Calcular tamanho da fonte em pt
         const fontSizeMm = (style.fontSize || 24) * pxToMmY;
         const pdfFontSizePt = fontSizeMm * 2.83465;
         
         pdf.setFontSize(pdfFontSizePt);
         pdf.setFont('helvetica', style.fontWeight === 'bold' ? 'bold' : 'normal');
         
-        const textPaddingX = 2 * pxToMmX;
         const horizontalOffset = (style.paddingLeft || 0) * pxToMmX;
         const verticalOffset = (style.paddingTop || 0) * pxToMmY;
         
-        // Calcular posição centralizada ou alinhada
+        // Ponto de ancoragem X
         let textX = x + (style.x || 0) * pxToMmX + horizontalOffset;
         if (style.textAlign === 'center') {
             textX += (style.width || 0) * pxToMmX / 2;
         } else if (style.textAlign === 'right') {
-            textX += (style.width || 0) * pxToMmX - textPaddingX;
-        } else {
-            textX += textPaddingX;
+            textX += (style.width || 0) * pxToMmX;
         }
 
-        const textY = y + ((style.y || 0) + (style.height || 0) / 2) * pxToMmY + (fontSizeMm * 0.1) + verticalOffset;
+        // Ponto de ancoragem Y (Centro vertical do retângulo)
+        const textY = y + ((style.y || 0) + (style.height || 0) / 2) * pxToMmY + verticalOffset;
 
-        // Proteção contra NaN
+        // Proteção e Sanidade
         const safeX = isFinite(textX) ? textX : x;
         const safeY = isFinite(textY) ? textY : y;
-        const safeWidth = isFinite((style.width || 100) * pxToMmX) ? (style.width || 100) * pxToMmX - (textPaddingX * 2) : 10;
+        const safeWidth = isFinite((style.width || 100) * pxToMmX) ? (style.width || 100) * pxToMmX : 10;
 
         try {
             pdf.text(
@@ -153,7 +149,7 @@ export const generatePdf = async (
         const currentBackground = studentModel?.fundoCrachaUrl || fallbackBackground;
         const currentStyle = studentModel?.badgeStyle || fallbackStyle;
 
-        // Fundo
+        // Fundo do Crachá
         try {
             if (!backgroundCache[currentBackground]) {
                 backgroundCache[currentBackground] = await toDataURL(currentBackground);
@@ -167,41 +163,33 @@ export const generatePdf = async (
         if (student.fotoUrl) {
           try {
             const studentPhotoDataUrl = await toDataURL(student.fotoUrl);
-            pdf.addImage(
-                studentPhotoDataUrl, 'JPEG', 
-                x + (currentStyle.photo.x || 0) * pxToMmX, 
-                y + (currentStyle.photo.y || 0) * pxToMmY, 
-                (currentStyle.photo.width || 100) * pxToMmX, 
-                (currentStyle.photo.height || 100) * pxToMmY
-            );
+            const px = x + (currentStyle.photo.x || 0) * pxToMmX;
+            const py = y + (currentStyle.photo.y || 0) * pxToMmY;
+            const pw = (currentStyle.photo.width || 100) * pxToMmX;
+            const ph = (currentStyle.photo.height || 100) * pxToMmY;
+            
+            pdf.addImage(studentPhotoDataUrl, 'JPEG', px, py, pw, ph);
+
+            // Borda da foto
+            if (currentStyle.photo.hasBorder && (currentStyle.photo.borderWidth || 0) > 0) {
+                const borderColorRgb = hexToRgb(currentStyle.photo.borderColor);
+                if (borderColorRgb) {
+                    pdf.setDrawColor(borderColorRgb.r, borderColorRgb.g, borderColorRgb.b);
+                    pdf.setLineWidth((currentStyle.photo.borderWidth || 1) * pxToMmX);
+                    const rx = (currentStyle.photo.borderRadius || 0) * pxToMmX;
+                    const ry = (currentStyle.photo.borderRadius || 0) * pxToMmY;
+                    pdf.roundedRect(px, py, pw, ph, rx, ry, 'S');
+                }
+            }
           } catch (e) {
             console.error("Erro na foto do aluno no PDF:", student.nome, e);
           }
         }
 
-        // Borda da foto
-        if (currentStyle.photo.hasBorder && (currentStyle.photo.borderWidth || 0) > 0) {
-            const borderColorRgb = hexToRgb(currentStyle.photo.borderColor);
-            if (borderColorRgb) {
-                pdf.setDrawColor(borderColorRgb.r, borderColorRgb.g, borderColorRgb.b);
-                pdf.setLineWidth((currentStyle.photo.borderWidth || 1) * pxToMmX);
-                const rx = (currentStyle.photo.borderRadius || 0) * pxToMmX;
-                const ry = (currentStyle.photo.borderRadius || 0) * pxToMmY;
-                pdf.roundedRect(
-                    x + (currentStyle.photo.x || 0) * pxToMmX, 
-                    y + (currentStyle.photo.y || 0) * pxToMmY, 
-                    (currentStyle.photo.width || 100) * pxToMmX, 
-                    (currentStyle.photo.height || 100) * pxToMmY,
-                    rx, ry, 'S'
-                );
-            }
-        }
-
-        // Textos
+        // Renderização dos campos de texto
         renderTextOnPdf(student.nome, currentStyle.name, x, y);
         renderTextOnPdf(student.turma, currentStyle.turma, x, y);
         
-        // Campos Personalizados
         if (currentStyle.customFields) {
             currentStyle.customFields.forEach(field => {
                 const value = student.customData?.[field.id];
