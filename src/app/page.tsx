@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -13,7 +14,7 @@ import StudentList from "@/components/student-list";
 import StudentBadge from "@/components/student-badge";
 import ModelsListCard from "@/components/models-list-card";
 import { Button } from "@/components/ui/button";
-import { FileDown, Printer, Loader2, ChevronLeft, ChevronRight, LayoutGrid, List } from "lucide-react";
+import { FileDown, Printer, Loader2, ChevronLeft, ChevronRight, LayoutGrid, List, CheckSquare, Square } from "lucide-react";
 import { type BadgeStyleConfig, defaultBadgeStyle } from "@/lib/badge-styles";
 import { useFirestore, useCollection, useAuth, useMemoFirebase, useUser } from "@/firebase";
 import { deleteDocumentNonBlocking, updateDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
@@ -59,6 +60,9 @@ export default function Home() {
   
   const students = studentsData || [];
   const models = modelsData || [];
+
+  // Filtra apenas os alunos habilitados para impressão
+  const enabledStudents = students.filter(s => s.enabled !== false);
 
   useEffect(() => {
     if (!isModelsLoading && models.length > 0 && !activeModel) {
@@ -143,7 +147,7 @@ export default function Home() {
 
   const addStudent = (student: Omit<Student, "id">) => {
     if (!alunosCollection) return;
-    addDocumentNonBlocking(alunosCollection, student);
+    addDocumentNonBlocking(alunosCollection, { ...student, enabled: true });
     toast({ title: "Aluno adicionado!" });
   };
 
@@ -161,28 +165,41 @@ export default function Home() {
   };
 
   const handleGeneratePdf = async () => {
-    if (students.length === 0) {
-      toast({ variant: "destructive", title: "Atenção", description: "Adicione alunos primeiro." });
+    if (enabledStudents.length === 0) {
+      toast({ variant: "destructive", title: "Atenção", description: "Nenhum aluno habilitado para impressão." });
       return;
     }
     setIsPdfLoading(true);
     try {
-      await generatePdf(students, liveBackground, liveStyle, models);
+      await generatePdf(enabledStudents, liveBackground, liveStyle, models);
       toast({ title: "PDF gerado com sucesso!" });
     } catch (error) {
       console.error(error);
-      toast({ variant: "destructive", title: "Erro no PDF", description: "Ocorreu um erro ao processar o PDF. Verifique os logs." });
+      toast({ variant: "destructive", title: "Erro no PDF", description: "Ocorreu um erro ao processar o PDF." });
     } finally {
       setIsPdfLoading(false);
     }
   };
 
   const handlePrint = () => {
+    if (enabledStudents.length === 0) {
+      toast({ variant: "destructive", title: "Atenção", description: "Nenhum aluno habilitado para impressão." });
+      return;
+    }
     setIsPrinting(true);
     setTimeout(() => {
       window.print();
       setIsPrinting(false);
     }, 500);
+  };
+
+  const toggleAllStudents = (enable: boolean) => {
+    students.forEach(student => {
+      if (student.enabled !== enable) {
+        updateStudent({ ...student, enabled: enable });
+      }
+    });
+    toast({ title: enable ? "Todos os alunos ativados" : "Todos os alunos desativados" });
   };
 
   const nextPreview = () => setPreviewIndex((prev) => (prev + 1) % (students.length || 1));
@@ -192,7 +209,8 @@ export default function Home() {
     id: "preview",
     nome: "NOME DO ALUNO",
     turma: "TURMA 101",
-    fotoUrl: PlaceHolderImages.find(i => i.id === 'avatar-placeholder')?.imageUrl || ""
+    fotoUrl: PlaceHolderImages.find(i => i.id === 'avatar-placeholder')?.imageUrl || "",
+    enabled: true
   };
   
   const isLoading = !isMounted || isAuthLoading || isModelsLoading;
@@ -239,17 +257,30 @@ export default function Home() {
 
               <div className="lg:col-span-2 flex flex-col gap-8">
                 <div className="bg-card p-6 rounded-lg shadow-sm no-print border">
-                  <h2 className="text-xl font-bold mb-4 text-primary flex items-center gap-2">
-                    Ações Rápidas
-                  </h2>
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-primary flex items-center gap-2">
+                      Ações de Impressão
+                    </h2>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      {enabledStudents.length} de {students.length} alunos selecionados
+                    </span>
+                  </div>
                   <div className="flex flex-col sm:flex-row gap-4">
-                     <Button className="flex-1 shadow-md" onClick={handleGeneratePdf} disabled={isPdfLoading || students.length === 0}>
+                     <Button className="flex-1 shadow-md" onClick={handleGeneratePdf} disabled={isPdfLoading || enabledStudents.length === 0}>
                       {isPdfLoading ? <Loader2 className="animate-spin mr-2" /> : <FileDown className="mr-2" />}
-                      Gerar PDF (8 por folha)
+                      Gerar PDF ({enabledStudents.length} crachás)
                     </Button>
-                    <Button variant="outline" className="flex-1" onClick={handlePrint} disabled={isPrinting || students.length === 0}>
+                    <Button variant="outline" className="flex-1" onClick={handlePrint} disabled={isPrinting || enabledStudents.length === 0}>
                       <Printer className="mr-2" />
-                      Imprimir Folha A4 (8 por folha)
+                      Imprimir Folha A4
+                    </Button>
+                  </div>
+                  <div className="flex gap-2 mt-4 justify-center">
+                    <Button variant="ghost" size="sm" onClick={() => toggleAllStudents(true)} className="text-xs h-8">
+                      <CheckSquare className="mr-2 h-3 w-3" /> Selecionar Todos
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => toggleAllStudents(false)} className="text-xs h-8">
+                      <Square className="mr-2 h-3 w-3" /> Desmarcar Todos
                     </Button>
                   </div>
                 </div>
@@ -281,7 +312,7 @@ export default function Home() {
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                       <div>
                         <h2 className="text-xl font-bold text-primary">Gestão de Alunos</h2>
-                        <p className="text-xs text-muted-foreground">Total: {students.length} registros</p>
+                        <p className="text-xs text-muted-foreground">Habilite os crachás que deseja imprimir.</p>
                       </div>
                       <div className="flex items-center bg-muted p-1 rounded-md no-print">
                         <Button 
@@ -326,7 +357,7 @@ export default function Home() {
       
       <div id="printable-area">
           <div className="print-grid">
-          {students.map((student) => {
+          {enabledStudents.map((student) => {
               const studentModel = models.find(m => m.id === student.modeloId) || activeModel;
               return (
                 <div key={`print-${student.id}`} className="print-item">

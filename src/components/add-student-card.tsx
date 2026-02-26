@@ -64,7 +64,8 @@ export default function AddStudentCard({ onAddStudent, models, activeModelId }: 
             nome: data.nome, 
             turma: data.turma, 
             fotoUrl: optimizedPhoto,
-            modeloId: data.modeloId || ""
+            modeloId: data.modeloId || "",
+            enabled: true
           });
           
           form.reset({

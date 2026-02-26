@@ -32,9 +32,10 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Loader2, Layout } from 'lucide-react';
+import { Pencil, Trash2, Loader2, Layout, CheckCircle2, Circle } from 'lucide-react';
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -93,13 +94,17 @@ export default function StudentList({
     setIsDialogOpen(true);
   };
 
+  const toggleStudentEnabled = (student: Student, enabled: boolean) => {
+    onUpdate({ ...student, enabled });
+  };
+
   const onSubmit: SubmitHandler<FormValues> = async (data) => {
     if (!editingStudent) return;
     setIsSubmitting(true);
     
     try {
       const file = data.fotoUrl?.[0];
-      const updateData: any = { 
+      const updateData: Student = { 
         ...editingStudent, 
         nome: data.nome, 
         turma: data.turma, 
@@ -144,14 +149,26 @@ export default function StudentList({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {students.map((student) => {
           const model = models.find(m => m.id === student.modeloId);
+          const isEnabled = student.enabled !== false;
           return (
-            <div key={student.id} className="relative group">
+            <div key={student.id} className={`relative group border rounded-lg overflow-hidden transition-all ${!isEnabled ? 'opacity-40 grayscale-[0.5]' : ''}`}>
               <StudentBadge 
                 student={student} 
                 background={model?.fundoCrachaUrl || currentLiveBackground || ''} 
                 styles={model?.badgeStyle || currentLiveStyle || ({} as BadgeStyleConfig)} 
               />
-              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+              <div className="absolute top-2 left-2 z-30">
+                 <Button 
+                    variant={isEnabled ? "default" : "outline"} 
+                    size="sm" 
+                    className="h-8 gap-2 bg-white text-black hover:bg-white/90 shadow-lg"
+                    onClick={() => toggleStudentEnabled(student, !isEnabled)}
+                  >
+                    {isEnabled ? <CheckCircle2 size={16} className="text-green-500" /> : <Circle size={16} />}
+                    {isEnabled ? "Ativo" : "Inativo"}
+                  </Button>
+              </div>
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-30">
                 <Button size="icon" variant="secondary" className="h-8 w-8 shadow-md" onClick={() => handleEditClick(student)}>
                   <Pencil size={14} />
                 </Button>
@@ -186,6 +203,7 @@ export default function StudentList({
         <Table>
           <TableHeader className="bg-muted/50">
             <TableRow>
+              <TableHead className="w-[50px]"></TableHead>
               <TableHead className="w-[80px]">Foto</TableHead>
               <TableHead>Nome</TableHead>
               <TableHead>Turma</TableHead>
@@ -196,8 +214,15 @@ export default function StudentList({
           <TableBody>
             {students.map((student) => {
               const model = models.find(m => m.id === student.modeloId);
+              const isEnabled = student.enabled !== false;
               return (
-                <TableRow key={student.id}>
+                <TableRow key={student.id} className={!isEnabled ? "opacity-50" : ""}>
+                  <TableCell>
+                    <Checkbox 
+                      checked={isEnabled} 
+                      onCheckedChange={(checked) => toggleStudentEnabled(student, checked as boolean)}
+                    />
+                  </TableCell>
                   <TableCell>
                     <Avatar className="h-10 w-10 border">
                       <AvatarImage src={student.fotoUrl} alt={student.nome} className="object-cover" />

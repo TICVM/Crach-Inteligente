@@ -10,7 +10,8 @@
         "turma": { "type": "string" },
         "fotoUrl": { "type": "string" },
         "customData": { "type": "object" },
-        "modeloId": { "type": "string" }
+        "modeloId": { "type": "string" },
+        "enabled": { "type": "boolean", "description": "Se o aluno deve ser incluído na impressão." }
       },
       "required": ["nome", "turma", "fotoUrl"]
     },

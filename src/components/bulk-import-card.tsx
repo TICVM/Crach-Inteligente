@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef } from 'react';
@@ -71,7 +72,7 @@ export default function BulkImportCard({ onImport }: BulkImportCardProps) {
                 try {
                   // Otimiza cada foto durante a importação em massa
                   const optimizedFoto = await compressImage(rawFotoUrl);
-                  resolve({ nome, turma, fotoUrl: optimizedFoto });
+                  resolve({ nome, turma, fotoUrl: optimizedFoto, enabled: true });
                 } catch (err) {
                   reject(err);
                 }

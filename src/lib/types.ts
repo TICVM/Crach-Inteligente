@@ -8,6 +8,7 @@ export interface Student {
   fotoUrl: string; // Base64 data URL
   customData?: { [key: string]: string };
   modeloId?: string; // ID do modelo de crachá vinculado
+  enabled?: boolean; // Se o crachá deve ser gerado/impresso
 }
 
 export interface BadgeModel {
