@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useRef } from 'react';
@@ -52,10 +51,8 @@ export default function BulkImportCard({ onImport, models }: BulkImportCardProps
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       
-      // Obtém todas as linhas como arrays de strings (header: 1)
       const rawRows = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1 });
       
-      // 1. Filtrar linhas que estão realmente vazias (sem dados úteis nas primeiras colunas)
       const filteredRows = rawRows.filter(row => {
         if (!row || row.length < 1) return false;
         const nomeValue = String(row[0] || '').trim();
@@ -63,8 +60,6 @@ export default function BulkImportCard({ onImport, models }: BulkImportCardProps
         return nomeValue !== '' || turmaValue !== '';
       });
 
-      // 2. Detectar e ignorar o cabeçalho
-      // Se a primeira linha válida contém as palavras "Nome" ou "Turma", é o cabeçalho.
       let studentData = filteredRows;
       if (filteredRows.length > 0) {
         const firstRow = filteredRows[0];
@@ -83,7 +78,6 @@ export default function BulkImportCard({ onImport, models }: BulkImportCardProps
         a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
       );
 
-      // Verificação de quantidade após remover o cabeçalho
       if (studentData.length !== sortedPhotos.length) {
         toast({
           variant: 'destructive',
@@ -112,7 +106,7 @@ export default function BulkImportCard({ onImport, models }: BulkImportCardProps
                     turma, 
                     fotoUrl: optimizedFoto, 
                     enabled: true,
-                    modeloId: selectedModelId === "default" ? undefined : selectedModelId
+                    modeloId: selectedModelId === "default" ? "" : selectedModelId
                   });
                 } catch (err) {
                   reject(err);
