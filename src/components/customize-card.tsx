@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useRef, type ChangeEvent } from 'react';
@@ -9,10 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Image as ImageIcon, Wand2, Type, Trash2, PlusCircle } from 'lucide-react';
+import { Wand2, Trash2, PlusCircle, Loader2 } from 'lucide-react';
 import NextImage from 'next/image';
 import { type BadgeStyleConfig, type CustomField, type TextStyle, type PhotoStyle } from '@/lib/badge-styles';
 import { Switch } from '@/components/ui/switch';
+import { compressImage } from '@/lib/image-utils';
 
 interface CustomizeCardProps {
   currentBackground: string;
@@ -45,18 +45,34 @@ const OpacitySlider = ({ label, value, onChange }: { label: string, value: numbe
     </div>
 );
 
-
 export default function CustomizeCard({ currentBackground, onSetBackground, badgeStyle, onStyleChange }: CustomizeCardProps) {
+  const [isOptimizing, setIsOptimizing] = React.useState(false);
   const backgroundFileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const handleBackgroundChange = () => {
     const file = backgroundFileRef.current?.files?.[0];
     if (!file) return;
+    
+    setIsOptimizing(true);
     const reader = new FileReader();
-    reader.onload = (e) => {
-      onSetBackground(e.target?.result as string);
-      toast({ title: 'Fundo atualizado!' });
+    reader.onload = async (e) => {
+      const rawDataUrl = e.target?.result as string;
+      try {
+        // Otimiza o fundo para as dimensões padrão do crachá (1063x768)
+        const optimizedBackground = await compressImage(rawDataUrl, 1063, 768, 0.7);
+        onSetBackground(optimizedBackground);
+        toast({ title: 'Fundo otimizado e atualizado!' });
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Erro na otimização",
+          description: "Não foi possível processar a imagem de fundo.",
+        });
+      } finally {
+        setIsOptimizing(false);
+        if (backgroundFileRef.current) backgroundFileRef.current.value = "";
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -143,12 +159,31 @@ export default function CustomizeCard({ currentBackground, onSetBackground, badg
             <AccordionContent>
                 <div className="space-y-2 pt-2">
                     <div className="flex items-center gap-4">
-                        <div className="w-20 h-14 relative rounded-md overflow-hidden border">
-                            {currentBackground && <NextImage src={currentBackground} alt="Fundo atual" fill className="object-cover" />}
+                        <div className="w-20 h-14 relative rounded-md overflow-hidden border bg-muted flex items-center justify-center">
+                            {currentBackground ? (
+                              <NextImage src={currentBackground} alt="Fundo atual" fill className="object-cover" />
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground text-center px-1">Sem Fundo</span>
+                            )}
                         </div>
                         <div className="flex-1">
-                            <Input type="file" accept="image/*" ref={backgroundFileRef} onChange={handleBackgroundChange} />
-                            <p className="text-xs text-muted-foreground mt-1">As alterações são salvas automaticamente.</p>
+                            <div className="relative">
+                              <Input 
+                                type="file" 
+                                accept="image/*" 
+                                ref={backgroundFileRef} 
+                                onChange={handleBackgroundChange} 
+                                disabled={isOptimizing}
+                                className={isOptimizing ? "opacity-50" : ""}
+                              />
+                              {isOptimizing && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-background/50 rounded-md">
+                                  <Loader2 className="h-4 w-4 animate-spin text-primary mr-2" />
+                                  <span className="text-xs font-medium">Otimizando...</span>
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">Recomendado: 1063x768px.</p>
                         </div>
                     </div>
                 </div>
