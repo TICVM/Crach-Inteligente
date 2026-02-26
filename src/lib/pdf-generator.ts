@@ -93,7 +93,7 @@ export const generatePdf = async (
         if(textColorRgb) pdf.setTextColor(textColorRgb.r, textColorRgb.g, textColorRgb.b);
         pdf.setFont('helvetica', style.fontWeight === 'bold' ? 'bold' : 'normal');
 
-        // Calibração do tamanho da fonte (escala 0.8 para paridade com o navegador)
+        // Calibração do tamanho da fonte (escala 0.82 para paridade com o navegador)
         let fontSizeMm = (style.fontSize || 24) * pxToMm * 0.82;
         let pdfFontSizePt = fontSizeMm / 0.3527; 
         pdf.setFontSize(pdfFontSizePt);
@@ -186,9 +186,11 @@ export const generatePdf = async (
             if (currentStyle.photo.hasBorder && (currentStyle.photo.borderWidth || 0) > 0) {
                 const borderRgb = hexToRgb(currentStyle.photo.borderColor);
                 if (borderRgb) {
+                    pdf.setGState(new (pdf as any).GState({ opacity: currentStyle.photo.borderOpacity || 1 }));
                     pdf.setDrawColor(borderRgb.r, borderRgb.g, borderRgb.b);
                     pdf.setLineWidth((currentStyle.photo.borderWidth || 1) * pxToMm);
                     pdf.roundedRect(px, py, pw, ph, (currentStyle.photo.borderRadius || 0) * pxToMm, (currentStyle.photo.borderRadius || 0) * pxToMm, 'S');
+                    pdf.setGState(new (pdf as any).GState({ opacity: 1 }));
                 }
             }
           } catch (e) {
@@ -196,7 +198,7 @@ export const generatePdf = async (
           }
         }
 
-        // Aplicação dos offsets solicitados: Nome (+7px) e Turma (0px)
+        // Aplicação dos offsets solicitados: Nome (+7px) e Turma (-3px para subir)
         renderTextOnPdf(student.nome, currentStyle.name, x, y, 7);
         
         // Sincroniza o tamanho da fonte da Turma com o do Nome para o PDF conforme solicitado
@@ -204,7 +206,7 @@ export const generatePdf = async (
             ...currentStyle.turma, 
             fontSize: currentStyle.name.fontSize 
         };
-        renderTextOnPdf(student.turma, turmaStyleSincronizado, x, y, 0);
+        renderTextOnPdf(student.turma, turmaStyleSincronizado, x, y, -3);
         
         if (currentStyle.customFields) {
             currentStyle.customFields.forEach(field => {
