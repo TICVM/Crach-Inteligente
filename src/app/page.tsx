@@ -423,148 +423,144 @@ export default function Home() {
                         </div>
                       </div>
 
-                      {isListVisible && (
-                        <>
-                          {/* Painel de Resumo por Turma */}
-                          <div className="bg-muted/30 p-4 rounded-lg border no-print">
-                            <div className="flex items-center gap-2 mb-3">
-                              <Users size={16} className="text-primary" />
-                              <h3 className="text-sm font-bold uppercase tracking-wider">Resumo por Turma</h3>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              <Button 
-                                variant={filterTurma === null ? "default" : "outline"} 
-                                size="sm" 
-                                onClick={() => setFilterTurma(null)}
-                                className="h-8 text-xs"
-                              >
-                                Todas ({students.length})
-                              </Button>
-                              {turmaStats.map(([turma, count]) => (
+                      {/* Painel de Resumo por Turma - Sempre visível */}
+                      <div className="bg-muted/30 p-4 rounded-lg border no-print">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Users size={16} className="text-primary" />
+                          <h3 className="text-sm font-bold uppercase tracking-wider">Resumo por Turma</h3>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button 
+                            variant={filterTurma === null ? "default" : "outline"} 
+                            size="sm" 
+                            onClick={() => setFilterTurma(null)}
+                            className="h-8 text-xs"
+                          >
+                            Todas ({students.length})
+                          </Button>
+                          {turmaStats.map(([turma, count]) => (
+                            <Button 
+                              key={turma} 
+                              variant={filterTurma === turma ? "default" : "outline"} 
+                              size="sm" 
+                              onClick={() => setFilterTurma(turma)}
+                              className="h-8 text-xs gap-2"
+                            >
+                              {turma} 
+                              <Badge variant="secondary" className="h-4 px-1 text-[10px]">{count}</Badge>
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Ações Rápidas e Edição em Massa - Sempre visíveis */}
+                      <div className="space-y-4 no-print border-b pb-6">
+                        <div className="flex flex-wrap gap-4 items-center justify-between">
+                          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                            {filterTurma ? (
+                              <span className="flex items-center gap-1">
+                                Exibindo: <Badge className="bg-primary/20 text-primary border-primary/20 hover:bg-primary/20">{filterTurma}</Badge>
+                                <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => setFilterTurma(null)}><FilterX size={10} /></Button>
+                              </span>
+                            ) : (
+                              <span>Exibindo todos os alunos</span>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={() => toggleAllInCurrentView(true)} className="text-xs h-8">
+                              <CheckSquare className="mr-2 h-3 w-3" /> Ativar {filterTurma ? `Turma ${filterTurma}` : "Tudo"}
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => toggleAllInCurrentView(false)} className="text-xs h-8">
+                              <Square className="mr-2 h-3 w-3" /> Desativar {filterTurma ? `Turma ${filterTurma}` : "Tudo"}
+                            </Button>
+                            
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
                                 <Button 
-                                  key={turma} 
-                                  variant={filterTurma === turma ? "default" : "outline"} 
+                                  variant="destructive" 
                                   size="sm" 
-                                  onClick={() => setFilterTurma(turma)}
-                                  className="h-8 text-xs gap-2"
+                                  disabled={enabledStudents.length === 0}
+                                  className="text-xs h-8"
                                 >
-                                  {turma} 
-                                  <Badge variant="secondary" className="h-4 px-1 text-[10px]">{count}</Badge>
+                                  <Trash2 className="mr-2 h-3 w-3" /> Excluir {enabledStudents.length} Selecionados
                                 </Button>
-                              ))}
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle className="flex items-center gap-2">
+                                    <AlertTriangle className="text-destructive" />
+                                    Confirmação de Exclusão
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Esta ação excluirá permanentemente os <b>{enabledStudents.length}</b> alunos marcados como ativos. Esta ação não pode ser desfeita.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive hover:bg-destructive/90">
+                                    Sim, Excluir Todos
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
+
+                        {/* Alteração de Design e Turma em Massa */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="bg-primary/5 p-4 rounded-lg border border-primary/10 flex flex-col gap-3">
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Sparkles size={16} className="text-primary" />
+                              <span className="text-xs font-bold uppercase tracking-tight">Design em Massa</span>
+                            </div>
+                            <div className="flex gap-2 items-center">
+                              <Select onValueChange={setBulkModelId} value={bulkModelId}>
+                                <SelectTrigger className="h-9 text-xs">
+                                  <SelectValue placeholder="Escolha um design" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="default">Design Aplicado (Padrão)</SelectItem>
+                                  {models.map(m => (
+                                    <SelectItem key={m.id} value={m.id}>{m.nomeModelo}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button 
+                                size="sm" 
+                                onClick={handleBulkApplyModel} 
+                                disabled={enabledStudents.length === 0}
+                                className="h-9 px-3 gap-2 whitespace-nowrap"
+                              >
+                                <Settings2 size={14} /> Aplicar
+                              </Button>
                             </div>
                           </div>
 
-                          {/* Ações Rápidas e Edição em Massa */}
-                          <div className="space-y-4 no-print border-b pb-6">
-                            <div className="flex flex-wrap gap-4 items-center justify-between">
-                              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                                {filterTurma ? (
-                                  <span className="flex items-center gap-1">
-                                    Exibindo: <Badge className="bg-primary/20 text-primary border-primary/20 hover:bg-primary/20">{filterTurma}</Badge>
-                                    <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => setFilterTurma(null)}><FilterX size={10} /></Button>
-                                  </span>
-                                ) : (
-                                  <span>Exibindo todos os alunos</span>
-                                )}
-                              </div>
-                              <div className="flex gap-2">
-                                <Button variant="outline" size="sm" onClick={() => toggleAllInCurrentView(true)} className="text-xs h-8">
-                                  <CheckSquare className="mr-2 h-3 w-3" /> Ativar {filterTurma ? `Turma ${filterTurma}` : "Tudo"}
-                                </Button>
-                                <Button variant="outline" size="sm" onClick={() => toggleAllInCurrentView(false)} className="text-xs h-8">
-                                  <Square className="mr-2 h-3 w-3" /> Desativar {filterTurma ? `Turma ${filterTurma}` : "Tudo"}
-                                </Button>
-                                
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button 
-                                      variant="destructive" 
-                                      size="sm" 
-                                      disabled={enabledStudents.length === 0}
-                                      className="text-xs h-8"
-                                    >
-                                      <Trash2 className="mr-2 h-3 w-3" /> Excluir {enabledStudents.length} Selecionados
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle className="flex items-center gap-2">
-                                        <AlertTriangle className="text-destructive" />
-                                        Confirmação de Exclusão
-                                      </AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Esta ação excluirá permanentemente os <b>{enabledStudents.length}</b> alunos marcados como ativos. Esta ação não pode ser desfeita.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                      <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive hover:bg-destructive/90">
-                                        Sim, Excluir Todos
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </div>
+                          <div className="bg-accent/5 p-4 rounded-lg border border-accent/10 flex flex-col gap-3">
+                            <div className="flex items-center gap-2 shrink-0">
+                              <ArrowRightLeft size={16} className="text-accent" />
+                              <span className="text-xs font-bold uppercase tracking-tight">Mover de Turma</span>
                             </div>
-
-                            {/* Alteração de Design e Turma em Massa */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="bg-primary/5 p-4 rounded-lg border border-primary/10 flex flex-col gap-3">
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <Sparkles size={16} className="text-primary" />
-                                  <span className="text-xs font-bold uppercase tracking-tight">Design em Massa</span>
-                                </div>
-                                <div className="flex gap-2 items-center">
-                                  <Select onValueChange={setBulkModelId} value={bulkModelId}>
-                                    <SelectTrigger className="h-9 text-xs">
-                                      <SelectValue placeholder="Escolha um design" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="default">Design Aplicado (Padrão)</SelectItem>
-                                      {models.map(m => (
-                                        <SelectItem key={m.id} value={m.id}>{m.nomeModelo}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <Button 
-                                    size="sm" 
-                                    onClick={handleBulkApplyModel} 
-                                    disabled={enabledStudents.length === 0}
-                                    className="h-9 px-3 gap-2 whitespace-nowrap"
-                                  >
-                                    <Settings2 size={14} /> Aplicar
-                                  </Button>
-                                </div>
-                              </div>
-
-                              <div className="bg-accent/5 p-4 rounded-lg border border-accent/10 flex flex-col gap-3">
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <ArrowRightLeft size={16} className="text-accent" />
-                                  <span className="text-xs font-bold uppercase tracking-tight">Mover de Turma</span>
-                                </div>
-                                <div className="flex gap-2 items-center">
-                                  <Input 
-                                    placeholder="Nova turma ou existente" 
-                                    value={bulkNewTurma}
-                                    onChange={(e) => setBulkNewTurma(e.target.value)}
-                                    className="h-9 text-xs"
-                                  />
-                                  <Button 
-                                    size="sm" 
-                                    variant="secondary"
-                                    onClick={handleBulkUpdateTurma} 
-                                    disabled={enabledStudents.length === 0 || !bulkNewTurma.trim()}
-                                    className="h-9 px-3 gap-2 whitespace-nowrap"
-                                  >
-                                    <ArrowRightLeft size={14} /> Mover
-                                  </Button>
-                                </div>
-                              </div>
+                            <div className="flex gap-2 items-center">
+                              <Input 
+                                placeholder="Nova turma ou existente" 
+                                value={bulkNewTurma}
+                                onChange={(e) => setBulkNewTurma(e.target.value)}
+                                className="h-9 text-xs"
+                              />
+                              <Button 
+                                size="sm" 
+                                variant="secondary"
+                                onClick={handleBulkUpdateTurma} 
+                                disabled={enabledStudents.length === 0 || !bulkNewTurma.trim()}
+                                className="h-9 px-3 gap-2 whitespace-nowrap"
+                              >
+                                <ArrowRightLeft size={14} /> Mover
+                              </Button>
                             </div>
                           </div>
-                        </>
-                      )}
+                        </div>
+                      </div>
                     </div>
 
                     {isListVisible ? (
@@ -586,8 +582,11 @@ export default function Home() {
                       )
                     ) : (
                       <div className="text-center py-12 bg-muted/20 rounded-lg border border-dashed text-muted-foreground">
-                        <p className="text-sm">A lista de alunos está oculta.</p>
-                        <Button variant="link" size="sm" onClick={() => setIsListVisible(true)}>Mostrar lista</Button>
+                        <p className="text-sm font-medium">A lista de alunos está oculta.</p>
+                        <p className="text-xs mt-1">Os controles acima continuam ativos para gestão em massa.</p>
+                        <Button variant="link" size="sm" onClick={() => setIsListVisible(true)} className="mt-2">
+                          <Eye className="mr-2 h-4 w-4" /> Mostrar lista de alunos
+                        </Button>
                       </div>
                     )}
                 </div>
