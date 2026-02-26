@@ -43,7 +43,7 @@ export const generatePdf = async (
 ) => {
     const a4 = { width: 210, height: 297 };
     const badgesPerLine = 2;
-    const badgesPerColumn = 4; // Total 8 crachás
+    const badgesPerColumn = 4; // Total 8 crachás por folha
     const totalPerPage = badgesPerLine * badgesPerColumn;
     const marginX = 10;
     const marginY = 10;
@@ -88,23 +88,30 @@ export const generatePdf = async (
             pdf.setGState(new (pdf as any).GState({ opacity: 1 }));
         }
 
-        // 2. Configurar Fonte
+        // 2. Configurar Fonte e Tamanho
         const textColorRgb = hexToRgb(style.color);
         if(textColorRgb) pdf.setTextColor(textColorRgb.r, textColorRgb.g, textColorRgb.b);
-
-        // Tamanho da fonte calibrado (1pt = 0.3527mm)
-        const fontSizeMm = (style.fontSize || 24) * pxToMm;
-        const pdfFontSizePt = fontSizeMm / 0.3527; 
-        
-        pdf.setFontSize(pdfFontSizePt);
         pdf.setFont('helvetica', style.fontWeight === 'bold' ? 'bold' : 'normal');
-        (pdf as any).setLineHeightFactor(1.1);
 
-        // 3. Cálculos de Deslocamento (Padding)
+        // Calibração do tamanho da fonte (CSS para PDF costuma precisar de um fator de ajuste de ~0.9)
+        let fontSizeMm = (style.fontSize || 24) * pxToMm * 0.9;
+        let pdfFontSizePt = fontSizeMm / 0.3527; 
+        pdf.setFontSize(pdfFontSizePt);
+
+        // 3. Verificação de Transbordo (Auto-Scaling)
         const hOffset = (style.paddingLeft || 0) * pxToMm;
         const vOffset = (style.paddingTop || 0) * pxToMm;
-        
-        // 4. Lógica de Alinhamento e Ancoragem
+        const maxWidth = boxW - Math.abs(hOffset) - 2; // Margem de segurança de 2mm
+
+        // Reduz a fonte se o texto for maior que a largura disponível
+        let currentTextWidth = pdf.getTextWidth(String(text));
+        while (currentTextWidth > maxWidth && pdfFontSizePt > 6) {
+            pdfFontSizePt -= 1;
+            pdf.setFontSize(pdfFontSizePt);
+            currentTextWidth = pdf.getTextWidth(String(text));
+        }
+
+        // 4. Lógica de Alinhamento Horizontal
         let drawX = boxX + hOffset;
         let align: 'left' | 'center' | 'right' = 'left';
 
@@ -112,14 +119,17 @@ export const generatePdf = async (
             drawX = boxX + hOffset + (boxW - hOffset) / 2;
             align = 'center';
         } else if (style.textAlign === 'right') {
-            drawX = boxX + boxW;
+            drawX = boxX + boxW - 1; // 1mm de recuo da borda direita
             align = 'right';
+        } else {
+            drawX = boxX + hOffset + 1; // 1mm de avanço da borda esquerda
         }
 
-        // Centralização vertical considerando o padding-top como deslocamento da área útil
-        // drawY é o ponto central da área que sobra após o padding
-        const drawY = boxY + vOffset + (boxH - vOffset) / 2;
-        const maxWidth = boxW - Math.abs(hOffset);
+        // 5. Alinhamento Vertical Preciso
+        // O jsPDF com baseline 'middle' centraliza na linha de base.
+        // Adicionamos um pequeno ajuste proporcional ao tamanho da fonte para o centro visual.
+        const verticalVisualAdjustment = (pdfFontSizePt * 0.3527) * 0.15;
+        const drawY = boxY + vOffset + (boxH - vOffset) / 2 + verticalVisualAdjustment;
 
         try {
             pdf.text(
@@ -127,7 +137,6 @@ export const generatePdf = async (
                 drawX,
                 drawY,
                 { 
-                    maxWidth: maxWidth > 0 ? maxWidth : 1, 
                     align: align,
                     baseline: 'middle'
                 }
