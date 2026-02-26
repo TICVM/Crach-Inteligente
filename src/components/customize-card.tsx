@@ -1,14 +1,15 @@
+
 "use client";
 
 import React, { useRef, type ChangeEvent } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Wand2, Trash2, PlusCircle, Loader2 } from 'lucide-react';
+import { Wand2, Trash2, PlusCircle, Loader2, Save, AlertCircle } from 'lucide-react';
 import NextImage from 'next/image';
 import { type BadgeStyleConfig, type CustomField, type TextStyle, type PhotoStyle } from '@/lib/badge-styles';
 import { Switch } from '@/components/ui/switch';
@@ -19,6 +20,9 @@ interface CustomizeCardProps {
   onSetBackground: (dataUrl: string) => void;
   badgeStyle: BadgeStyleConfig;
   onStyleChange: (style: BadgeStyleConfig) => void;
+  onSave: () => void;
+  isSaving: boolean;
+  hasUnsavedChanges: boolean;
 }
 
 const safeParseInt = (val: string): number => {
@@ -56,7 +60,15 @@ const OpacitySlider = ({ label, value, onChange }: { label: string, value: numbe
     </div>
 );
 
-export default function CustomizeCard({ currentBackground, onSetBackground, badgeStyle, onStyleChange }: CustomizeCardProps) {
+export default function CustomizeCard({ 
+  currentBackground, 
+  onSetBackground, 
+  badgeStyle, 
+  onStyleChange,
+  onSave,
+  isSaving,
+  hasUnsavedChanges
+}: CustomizeCardProps) {
   const [isOptimizing, setIsOptimizing] = React.useState(false);
   const backgroundFileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -72,7 +84,7 @@ export default function CustomizeCard({ currentBackground, onSetBackground, badg
       try {
         const optimizedBackground = await compressImage(rawDataUrl, 1063, 768, 0.7);
         onSetBackground(optimizedBackground);
-        toast({ title: 'Fundo otimizado e atualizado!' });
+        toast({ title: 'Fundo alterado!', description: 'Não esqueça de salvar o design para persistir na nuvem.' });
       } catch (error) {
         toast({
           variant: "destructive",
@@ -154,7 +166,7 @@ export default function CustomizeCard({ currentBackground, onSetBackground, badg
   );
 
   return (
-    <Card>
+    <Card className="border-2">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-primary">
           <Wand2 />
@@ -189,11 +201,10 @@ export default function CustomizeCard({ currentBackground, onSetBackground, badg
                               {isOptimizing && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-background/50 rounded-md">
                                   <Loader2 className="h-4 w-4 animate-spin text-primary mr-2" />
-                                  <span className="text-xs font-medium">Otimizando...</span>
+                                  <span className="text-xs font-medium">Processando...</span>
                                 </div>
                               )}
                             </div>
-                            <p className="text-xs text-muted-foreground mt-1">Recomendado: 1063x768px.</p>
                         </div>
                     </div>
                 </div>
@@ -262,14 +273,34 @@ export default function CustomizeCard({ currentBackground, onSetBackground, badg
                    </AccordionItem>
                 </Accordion>
               ))}
-               <Button onClick={addCustomField} className="w-full mt-2" variant="outline">
-                <PlusCircle size={16} className="mr-2"/> Adicionar Novo Campo
+               <Button onClick={addCustomField} className="w-full mt-2" variant="outline" size="sm">
+                <PlusCircle size={14} className="mr-2"/> Adicionar Novo Campo
               </Button>
             </AccordionContent>
           </AccordionItem>
-
         </Accordion>
       </CardContent>
+      <CardFooter className="flex flex-col gap-2 border-t pt-4 bg-muted/30">
+        {hasUnsavedChanges && (
+          <div className="flex items-center gap-2 text-xs text-amber-600 font-medium mb-1">
+            <AlertCircle size={14} />
+            Você tem alterações não salvas.
+          </div>
+        )}
+        <Button 
+          className="w-full shadow-md" 
+          onClick={onSave} 
+          disabled={isSaving || !hasUnsavedChanges}
+          variant={hasUnsavedChanges ? "default" : "secondary"}
+        >
+          {isSaving ? (
+            <Loader2 className="animate-spin mr-2" />
+          ) : (
+            <Save className="mr-2" />
+          )}
+          Salvar Design na Nuvem
+        </Button>
+      </CardFooter>
     </Card>
   );
 }

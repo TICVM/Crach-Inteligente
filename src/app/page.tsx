@@ -13,7 +13,7 @@ import CustomizeCard from "@/components/customize-card";
 import StudentList from "@/components/student-list";
 import StudentBadge from "@/components/student-badge";
 import { Button } from "@/components/ui/button";
-import { FileDown, Printer, Loader2, Cloud, RefreshCw } from "lucide-react";
+import { FileDown, Printer, Loader2, Cloud, RefreshCw, Save } from "lucide-react";
 import { type BadgeStyleConfig, defaultBadgeStyle } from "@/lib/badge-styles";
 import { useFirestore, useCollection, useDoc, useAuth, useMemoFirebase, useUser } from "@/firebase";
 import { deleteDocumentNonBlocking, updateDocumentNonBlocking, setDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
@@ -27,14 +27,15 @@ export default function Home() {
   const [isPdfLoading, setIsPdfLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [isConfigInitialized, setIsConfigInitialized] = useState(false);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   const { toast } = useToast();
   const firestore = useFirestore();
   const auth = useAuth();
   const { user, isUserLoading: isAuthLoading } = useUser();
   
-  // Ref para controlar a última versão salva/carregada e evitar loops
-  const lastSyncedStateRef = useRef<string>("");
+  const lastSavedStateRef = useRef<string>("");
 
   useEffect(() => {
     setIsMounted(true);
@@ -45,7 +46,6 @@ export default function Home() {
     }
   }, [auth, user, isAuthLoading]);
 
-  // Referência para a coleção de alunos
   const alunosCollection = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, 'alunos');
@@ -54,7 +54,6 @@ export default function Home() {
   const { data: studentsData, isLoading: studentsLoading } = useCollection<Student>(alunosCollection);
   const students = studentsData || [];
 
-  // Referência para o documento de configuração (único por usuário)
   const configDocRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return doc(firestore, 'configuracaoCracha', user.uid);
@@ -62,14 +61,12 @@ export default function Home() {
   
   const { data: configData, isLoading: isConfigLoading } = useDoc<any>(configDocRef);
 
-  // 1. SINCRONIZAÇÃO DE DESCIDA (Download do Firestore)
+  // Carregar dados da nuvem
   useEffect(() => {
-    // Só prosseguimos se o documento terminou de carregar (pode ser null se não existir)
     if (!isMounted || isConfigLoading || !user || isConfigInitialized || !configDocRef) return;
 
     if (configData !== undefined) {
       if (configData) {
-        // Documento encontrado: Restaurar design
         const savedStyle = configData.badgeStyle;
         const savedBackground = configData.fundoCrachaUrl || "";
         
@@ -84,56 +81,45 @@ export default function Home() {
         
         setBadgeStyle(mergedStyle);
         setBackground(savedBackground);
-        
-        // Atualiza a ref para o estado que acabamos de baixar
-        lastSyncedStateRef.current = JSON.stringify({ 
-          style: mergedStyle, 
-          bg: savedBackground 
-        });
+        lastSavedStateRef.current = JSON.stringify({ style: mergedStyle, bg: savedBackground });
       } else {
-        // Documento não existe (Primeiro acesso): Criar com padrões
         const defaultBg = PlaceHolderImages.find(img => img.id === 'default-background')?.imageUrl || '';
         setBackground(defaultBg);
         setBadgeStyle(defaultBadgeStyle);
-        
-        const initialState = { 
-          badgeStyle: defaultBadgeStyle, 
-          fundoCrachaUrl: defaultBg 
-        };
-        
-        setDocumentNonBlocking(configDocRef, initialState, { merge: true });
-        lastSyncedStateRef.current = JSON.stringify({ style: defaultBadgeStyle, bg: defaultBg });
+        lastSavedStateRef.current = JSON.stringify({ style: defaultBadgeStyle, bg: defaultBg });
       }
-      
-      // Marca como inicializado para liberar o salvamento automático (Sync Up)
       setIsConfigInitialized(true);
-      console.log("Configurações recuperadas da nuvem com sucesso.");
     }
   }, [configData, isConfigLoading, user, isMounted, isConfigInitialized, configDocRef]);
-  
-  // 2. SINCRONIZAÇÃO DE SUBIDA (Upload para o Firestore)
-  useEffect(() => {
-    // SÓ SALVA se já carregamos a versão da nuvem primeiro
-    if (isConfigInitialized && configDocRef && user) {
-      const currentState = { style: badgeStyle, bg: background };
-      const currentStateStr = JSON.stringify(currentState);
-      
-      // Só dispara o salvamento se o estado atual for diferente do último sincronizado
-      if (currentStateStr !== lastSyncedStateRef.current) {
-        const handler = setTimeout(() => {
-          setDocumentNonBlocking(configDocRef, { 
-            badgeStyle: currentState.style, 
-            fundoCrachaUrl: currentState.bg 
-          }, { merge: true });
-          
-          lastSyncedStateRef.current = currentStateStr;
-          console.log("Alterações de design salvas na nuvem.");
-        }, 1200); // Debounce de 1.2s para não sobrecarregar enquanto o usuário edita
 
-        return () => clearTimeout(handler);
-      }
+  // Monitorar alterações não salvas
+  useEffect(() => {
+    if (!isConfigInitialized) return;
+    const currentState = JSON.stringify({ style: badgeStyle, bg: background });
+    setHasUnsavedChanges(currentState !== lastSavedStateRef.current);
+  }, [badgeStyle, background, isConfigInitialized]);
+
+  const saveDesign = async () => {
+    if (!configDocRef || !user) return;
+    
+    setIsSavingConfig(true);
+    const currentState = { style: badgeStyle, bg: background };
+    
+    try {
+      setDocumentNonBlocking(configDocRef, { 
+        badgeStyle: currentState.style, 
+        fundoCrachaUrl: currentState.bg 
+      }, { merge: true });
+      
+      lastSavedStateRef.current = JSON.stringify(currentState);
+      setHasUnsavedChanges(false);
+      toast({ title: "Design salvo!", description: "Suas personalizações estão seguras na nuvem." });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Erro ao salvar", description: "Verifique sua conexão." });
+    } finally {
+      setIsSavingConfig(false);
     }
-  }, [badgeStyle, background, isConfigInitialized, configDocRef, user]);
+  };
 
   const addStudent = (student: Omit<Student, "id">) => {
     if (!alunosCollection) return;
@@ -212,14 +198,17 @@ export default function Home() {
         ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-1 flex flex-col gap-8 no-print">
-                <AddStudentCard onAddStudent={addStudent} badgeStyle={badgeStyle} />
-                <BulkImportCard onImport={handleBulkImport} />
                 <CustomizeCard
                   currentBackground={background}
                   onSetBackground={setBackground}
                   badgeStyle={badgeStyle}
                   onStyleChange={setBadgeStyle}
+                  onSave={saveDesign}
+                  isSaving={isSavingConfig}
+                  hasUnsavedChanges={hasUnsavedChanges}
                 />
+                <AddStudentCard onAddStudent={addStudent} badgeStyle={badgeStyle} />
+                <BulkImportCard onImport={handleBulkImport} />
               </div>
 
               <div className="lg:col-span-2 flex flex-col gap-8">
