@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { type Student } from "@/lib/types";
 import { generatePdf } from "@/lib/pdf-generator";
@@ -24,14 +25,17 @@ export default function Home() {
   const [badgeStyle, setBadgeStyle] = useState<BadgeStyleConfig>(defaultBadgeStyle);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPdfLoading, setIsPdfLoading] = useState(false);
-  const { toast } = useToast();
   const [isMounted, setIsMounted] = useState(false);
-
+  const [isConfigInitialized, setIsConfigInitialized] = useState(false);
+  
+  const { toast } = useToast();
   const firestore = useFirestore();
   const auth = useAuth();
   const { user, isUserLoading: isAuthLoading } = useUser();
   
-  // Garantir que o usuário está logado anonimamente ANTES de criar as referências
+  // Ref para controlar se a mudança veio do banco ou do usuário
+  const lastSavedConfigRef = useRef<string>("");
+
   useEffect(() => {
     setIsMounted(true);
     if (auth && !user && !isAuthLoading) {
@@ -40,82 +44,107 @@ export default function Home() {
         toast({
           variant: "destructive",
           title: "Erro de Conexão",
-          description: "Não foi possível conectar ao servidor em tempo real.",
+          description: "Não foi possível conectar ao servidor com segurança.",
         });
       });
     }
   }, [auth, user, isAuthLoading, toast]);
 
-  // Referência para a coleção de alunos (só cria se o usuário estiver logado)
   const alunosCollection = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, 'alunos');
   }, [firestore, user]);
 
-  // Hook para buscar alunos em tempo real
   const { data: studentsData, isLoading: studentsLoading } = useCollection<Student>(alunosCollection);
   const students = studentsData || [];
 
-  // Referência para o documento de configuração global
   const configDocRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return doc(firestore, 'configuracaoCracha', 'global');
+    // Salva a configuração por usuário para evitar sobrescrever o design de outros
+    return doc(firestore, 'configuracaoCracha', user.uid);
   }, [firestore, user]);
   
-  // Hook para buscar configurações em tempo real
   const { data: configData, isLoading: isConfigLoading } = useDoc<any>(configDocRef);
 
-  // Carregar configurações do Firestore
+  // 1. CARREGAR dados do Firestore (Sync DOWN)
   useEffect(() => {
-    if (configData) {
-      if (configData.badgeStyle) {
-        const parsed = configData.badgeStyle;
-        const mergedStyle = {
-            ...defaultBadgeStyle,
-            ...parsed,
-            photo: { ...defaultBadgeStyle.photo, ...parsed.photo },
-            name: { ...defaultBadgeStyle.name, ...parsed.name },
-            turma: { ...defaultBadgeStyle.turma, ...parsed.turma },
-            customFields: parsed.customFields?.map((field: any) => ({
-              ...defaultBadgeStyle.name,
-              id: '',
-              label: '',
-              ...field,
-            })) || [],
-        };
-        setBadgeStyle(mergedStyle);
-      }
-      setBackground(configData.fundoCrachaUrl || PlaceHolderImages.find(img => img.id === 'default-background')?.imageUrl || '');
-    } else if (configDocRef && !isConfigLoading && user && configData === null) {
-        // Inicializar configuração padrão no banco se o documento estiver vazio
-        const defaultConfig = {
-            badgeStyle: defaultBadgeStyle,
-            fundoCrachaUrl: PlaceHolderImages.find(img => img.id === 'default-background')?.imageUrl || ''
-        };
-        setDocumentNonBlocking(configDocRef, defaultConfig, { merge: true });
-    }
-  }, [configData, isConfigLoading, user, configDocRef]);
-  
-  // Salvar alterações de estilo no Firestore com Debounce
-  useEffect(() => {
-    if (isMounted && configDocRef && !isConfigLoading && user && configData) {
-      const handler = setTimeout(() => {
-        const hasStyleChanged = JSON.stringify(configData.badgeStyle) !== JSON.stringify(badgeStyle);
-        const hasBackgroundChanged = configData.fundoCrachaUrl !== background;
+    if (isMounted && !isConfigLoading && user) {
+      if (configData) {
+        // Se temos dados no banco, atualizamos o estado local
+        const savedStyle = configData.badgeStyle;
+        const savedBackground = configData.fundoCrachaUrl;
         
-        if (hasStyleChanged || hasBackgroundChanged) {
-          updateDocumentNonBlocking(configDocRef, { badgeStyle, fundoCrachaUrl: background });
+        if (savedStyle) {
+          // Mesclagem profunda para garantir que novos campos do sistema não quebrem estilos antigos
+          const mergedStyle = {
+            ...defaultBadgeStyle,
+            ...savedStyle,
+            photo: { ...defaultBadgeStyle.photo, ...savedStyle.photo },
+            name: { ...defaultBadgeStyle.name, ...savedStyle.name },
+            turma: { ...defaultBadgeStyle.turma, ...savedStyle.turma },
+            customFields: savedStyle.customFields || [],
+          };
+          setBadgeStyle(mergedStyle);
         }
-      }, 1500);
-
-      return () => clearTimeout(handler);
+        
+        if (savedBackground) {
+          setBackground(savedBackground);
+        }
+        
+        // Registramos o que acabamos de carregar para não salvar de volta imediatamente
+        lastSavedConfigRef.current = JSON.stringify({ 
+          style: savedStyle || defaultBadgeStyle, 
+          bg: savedBackground || "" 
+        });
+        
+        setIsConfigInitialized(true);
+      } else if (configData === null) {
+        // Se o documento não existe no banco, inicializamos com os padrões
+        const defaultBg = PlaceHolderImages.find(img => img.id === 'default-background')?.imageUrl || '';
+        setBackground(defaultBg);
+        setBadgeStyle(defaultBadgeStyle);
+        
+        const initialData = { 
+          badgeStyle: defaultBadgeStyle, 
+          fundoCrachaUrl: defaultBg 
+        };
+        
+        if (configDocRef) {
+          setDocumentNonBlocking(configDocRef, initialData, { merge: true });
+          lastSavedConfigRef.current = JSON.stringify({ style: defaultBadgeStyle, bg: defaultBg });
+          setIsConfigInitialized(true);
+        }
+      }
     }
-  }, [badgeStyle, background, isMounted, configDocRef, isConfigLoading, user, configData]);
+  }, [configData, isConfigLoading, user, isMounted, configDocRef]);
+  
+  // 2. SALVAR alterações no Firestore (Sync UP) com Proteção
+  useEffect(() => {
+    // SÓ SALVAMOS se:
+    // - O sistema já carregou os dados iniciais do banco (isConfigInitialized)
+    // - Os dados atuais são diferentes dos que carregamos/salvamos pela última vez
+    if (isConfigInitialized && configDocRef && user) {
+      const currentConfigStr = JSON.stringify({ style: badgeStyle, bg: background });
+      
+      if (currentConfigStr !== lastSavedConfigRef.current) {
+        const handler = setTimeout(() => {
+          updateDocumentNonBlocking(configDocRef, { 
+            badgeStyle, 
+            fundoCrachaUrl: background 
+          });
+          lastSavedConfigRef.current = currentConfigStr;
+          console.log("Configurações salvas na nuvem com sucesso.");
+        }, 1000); // Debounce de 1 segundo
+
+        return () => clearTimeout(handler);
+      }
+    }
+  }, [badgeStyle, background, isConfigInitialized, configDocRef, user]);
 
   const addStudent = (student: Omit<Student, "id">) => {
     if (!alunosCollection) return;
     addDocumentNonBlocking(alunosCollection, student);
-    toast({ title: "Sucesso!", description: "Aluno salvo no banco de dados." });
+    toast({ title: "Sucesso!", description: "Aluno salvo na nuvem." });
   };
 
   const updateStudent = (updatedStudent: Student) => {
@@ -123,14 +152,14 @@ export default function Home() {
     const studentDocRef = doc(firestore, 'alunos', updatedStudent.id);
     const { id, ...dataToUpdate } = updatedStudent;
     updateDocumentNonBlocking(studentDocRef, dataToUpdate);
-    toast({ title: "Sucesso!", description: "Dados atualizados no banco." });
+    toast({ title: "Sucesso!", description: "Dados sincronizados." });
   };
 
   const deleteStudent = (studentId: string) => {
     if (!firestore) return;
     const studentDocRef = doc(firestore, 'alunos', studentId);
     deleteDocumentNonBlocking(studentDocRef);
-    toast({ title: "Aluno removido do banco." });
+    toast({ title: "Aluno removido da nuvem." });
   };
 
   const handleBulkImport = (newStudents: Omit<Student, "id">[]) => {
@@ -138,7 +167,7 @@ export default function Home() {
      newStudents.forEach(student => {
         addDocumentNonBlocking(alunosCollection, student);
      });
-     toast({ title: "Sucesso!", description: `${newStudents.length} alunos importados.` });
+     toast({ title: "Importação concluída!", description: `${newStudents.length} alunos salvos.` });
   };
 
   const handlePrint = () => {
@@ -172,8 +201,7 @@ export default function Home() {
     }
   };
   
-  // Estado de carregamento global refinado
-  const isLoading = !isMounted || isAuthLoading || (user && (studentsLoading || isConfigLoading));
+  const isLoading = !isMounted || isAuthLoading || (user && (studentsLoading || isConfigLoading || !isConfigInitialized));
 
   return (
     <div className="min-h-screen bg-background">
@@ -182,7 +210,7 @@ export default function Home() {
         {isLoading ? (
             <div className="flex flex-col justify-center items-center h-64 gap-4">
                 <Loader2 className="animate-spin h-12 w-12 text-primary" />
-                <p className="text-muted-foreground animate-pulse">Conectando ao banco de dados seguro...</p>
+                <p className="text-muted-foreground animate-pulse">Sincronizando com seu banco de dados na nuvem...</p>
             </div>
         ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -200,12 +228,12 @@ export default function Home() {
               <div className="lg:col-span-2 flex flex-col gap-8">
                 <div className="bg-card p-6 rounded-lg shadow-sm no-print border">
                   <h2 className="text-xl font-bold mb-4 text-primary flex items-center gap-2">
-                    Ações de Saída
+                    Exportação Profissional
                   </h2>
                   <div className="flex flex-col sm:flex-row gap-4">
                      <Button className="flex-1" onClick={handleGeneratePdf} disabled={isPdfLoading || students.length === 0}>
                       {isPdfLoading ? <Loader2 className="animate-spin mr-2" /> : <FileDown className="mr-2" />}
-                      Exportar para PDF
+                      Exportar PDF (Alta Resolução)
                     </Button>
                     <Button variant="outline" className="flex-1" onClick={handlePrint} disabled={isPrinting || students.length === 0}>
                       <Printer className="mr-2" />
@@ -215,7 +243,7 @@ export default function Home() {
                 </div>
 
                 <div className="bg-card p-6 rounded-lg shadow-sm border">
-                    <h2 className="text-xl font-bold mb-4 text-primary">Lista de Alunos (Nuvem)</h2>
+                    <h2 className="text-xl font-bold mb-4 text-primary">Lista de Alunos Sincronizada</h2>
                     {students.length > 0 ? (
                       <StudentList students={students} onUpdate={updateStudent} onDelete={deleteStudent} badgeStyle={badgeStyle}/>
                     ) : (
@@ -234,7 +262,7 @@ export default function Home() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-muted-foreground italic">Cadastre alunos para ver a prévia real aqui.</p>
+                      <p className="text-muted-foreground italic text-center py-8">Cadastre alunos para visualizar seu design com dados reais.</p>
                     )}
                 </div>
               </div>
@@ -253,8 +281,8 @@ export default function Home() {
       </main>
       
       {isMounted && (
-        <footer className="text-center py-8 text-muted-foreground text-sm no-print">
-          <p>&copy; {new Date().getFullYear()} Crachá Inteligente. Sincronizado com Firebase Firestore.</p>
+        <footer className="text-center py-8 text-muted-foreground text-sm no-print border-t mt-8">
+          <p>&copy; {new Date().getFullYear()} Crachá Inteligente. Todos os dados estão protegidos e sincronizados no Cloud Firestore.</p>
         </footer>
       )}
     </div>
