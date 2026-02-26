@@ -31,7 +31,22 @@ export default function Home() {
   const auth = useAuth();
   const { user, isUserLoading: isAuthLoading } = useUser();
   
-  // Referência para a coleção de alunos no Firestore
+  // Garantir que o usuário está logado anonimamente ANTES de criar as referências
+  useEffect(() => {
+    setIsMounted(true);
+    if (auth && !user && !isAuthLoading) {
+      signInAnonymously(auth).catch((error) => {
+        console.error("Falha na autenticação anônima", error);
+        toast({
+          variant: "destructive",
+          title: "Erro de Conexão",
+          description: "Não foi possível conectar ao servidor em tempo real.",
+        });
+      });
+    }
+  }, [auth, user, isAuthLoading, toast]);
+
+  // Referência para a coleção de alunos (só cria se o usuário estiver logado)
   const alunosCollection = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, 'alunos');
@@ -41,7 +56,7 @@ export default function Home() {
   const { data: studentsData, isLoading: studentsLoading } = useCollection<Student>(alunosCollection);
   const students = studentsData || [];
 
-  // Referência para o documento de configuração global no Firestore
+  // Referência para o documento de configuração global
   const configDocRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return doc(firestore, 'configuracaoCracha', 'global');
@@ -50,29 +65,10 @@ export default function Home() {
   // Hook para buscar configurações em tempo real
   const { data: configData, isLoading: isConfigLoading } = useDoc<any>(configDocRef);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  // Garantir que o usuário está logado anonimamente para acessar o Firestore
-  useEffect(() => {
-    if (auth && !user && !isAuthLoading) {
-      signInAnonymously(auth).catch((error) => {
-        console.error("Falha na autenticação anônima", error);
-        toast({
-          variant: "destructive",
-          title: "Erro de Conexão",
-          description: "Não foi possível conectar ao banco de dados em tempo real.",
-        });
-      });
-    }
-  }, [auth, user, isAuthLoading, toast]);
-
-  // Carregar configurações do Firestore quando disponíveis
+  // Carregar configurações do Firestore
   useEffect(() => {
     if (configData) {
       if (configData.badgeStyle) {
-        // Garantir que campos novos tenham valores padrão se não existirem no banco
         const parsed = configData.badgeStyle;
         const mergedStyle = {
             ...defaultBadgeStyle,
@@ -90,21 +86,20 @@ export default function Home() {
         setBadgeStyle(mergedStyle);
       }
       setBackground(configData.fundoCrachaUrl || PlaceHolderImages.find(img => img.id === 'default-background')?.imageUrl || '');
-    } else if (configDocRef && !isConfigLoading && user) {
-        // Inicializar configuração padrão no banco se não existir
+    } else if (configDocRef && !isConfigLoading && user && configData === null) {
+        // Inicializar configuração padrão no banco se o documento estiver vazio
         const defaultConfig = {
             badgeStyle: defaultBadgeStyle,
             fundoCrachaUrl: PlaceHolderImages.find(img => img.id === 'default-background')?.imageUrl || ''
         };
-        setDocumentNonBlocking(configDocRef, defaultConfig, {});
+        setDocumentNonBlocking(configDocRef, defaultConfig, { merge: true });
     }
   }, [configData, isConfigLoading, user, configDocRef]);
   
-  // Salvar alterações de estilo no Firestore com Debounce (atraso) para evitar excesso de gravações
+  // Salvar alterações de estilo no Firestore com Debounce
   useEffect(() => {
     if (isMounted && configDocRef && !isConfigLoading && user && configData) {
       const handler = setTimeout(() => {
-        // Comparação simples para evitar loop de atualização se os dados forem iguais
         const hasStyleChanged = JSON.stringify(configData.badgeStyle) !== JSON.stringify(badgeStyle);
         const hasBackgroundChanged = configData.fundoCrachaUrl !== background;
         
@@ -143,7 +138,7 @@ export default function Home() {
      newStudents.forEach(student => {
         addDocumentNonBlocking(alunosCollection, student);
      });
-     toast({ title: "Sucesso!", description: `${newStudents.length} alunos importados para o banco.` });
+     toast({ title: "Sucesso!", description: `${newStudents.length} alunos importados.` });
   };
 
   const handlePrint = () => {
@@ -177,7 +172,8 @@ export default function Home() {
     }
   };
   
-  const isLoading = (studentsLoading || isAuthLoading || isConfigLoading) && !isMounted;
+  // Estado de carregamento global refinado
+  const isLoading = !isMounted || isAuthLoading || (user && (studentsLoading || isConfigLoading));
 
   return (
     <div className="min-h-screen bg-background">
@@ -186,7 +182,7 @@ export default function Home() {
         {isLoading ? (
             <div className="flex flex-col justify-center items-center h-64 gap-4">
                 <Loader2 className="animate-spin h-12 w-12 text-primary" />
-                <p className="text-muted-foreground animate-pulse">Conectando ao banco de dados...</p>
+                <p className="text-muted-foreground animate-pulse">Conectando ao banco de dados seguro...</p>
             </div>
         ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -219,7 +215,7 @@ export default function Home() {
                 </div>
 
                 <div className="bg-card p-6 rounded-lg shadow-sm border">
-                    <h2 className="text-xl font-bold mb-4 text-primary">Lista de Alunos (Sincronizada)</h2>
+                    <h2 className="text-xl font-bold mb-4 text-primary">Lista de Alunos (Nuvem)</h2>
                     {students.length > 0 ? (
                       <StudentList students={students} onUpdate={updateStudent} onDelete={deleteStudent} badgeStyle={badgeStyle}/>
                     ) : (
@@ -258,7 +254,7 @@ export default function Home() {
       
       {isMounted && (
         <footer className="text-center py-8 text-muted-foreground text-sm no-print">
-          <p>&copy; {new Date().getFullYear()} Crachá Inteligente. Dados salvos no Cloud Firestore.</p>
+          <p>&copy; {new Date().getFullYear()} Crachá Inteligente. Sincronizado com Firebase Firestore.</p>
         </footer>
       )}
     </div>

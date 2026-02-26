@@ -15,13 +15,13 @@ service cloud.firestore {
 
     // Regras para a configuração global do crachá
     match /configuracaoCracha/{configuracaoId} {
-      // Leitura é pública para permitir que o design carregue rapidamente
+      // Leitura é pública para permitir que o design carregue rapidamente sem erros de permissão
       allow read: if true;
-      // Escrita exige autenticação
+      // Escrita exige autenticação para proteger o design
       allow write: if isSignedIn();
     }
     
-    // Bloqueia qualquer outro acesso por padrão
+    // Bloqueia qualquer outro acesso por padrão por segurança
     match /{path=**} {
       allow read, write: if false;
     }
