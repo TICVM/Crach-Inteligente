@@ -65,7 +65,7 @@ export const generatePdf = async (
     const renderTextOnPdf = (text: string, style: TextStyle, x: number, y: number) => {
         if (!text || !style) return;
 
-        // Fundo do texto
+        // Fundo do texto (Retângulo)
         const bgRgb = hexToRgb(style.backgroundColor);
         const bgOpacity = typeof style.backgroundOpacity === 'number' ? style.backgroundOpacity : 0;
         
@@ -95,24 +95,28 @@ export const generatePdf = async (
         pdf.setFontSize(pdfFontSizePt);
         pdf.setFont('helvetica', style.fontWeight === 'bold' ? 'bold' : 'normal');
         
+        // Simular o padding de 0.3em do CSS para alinhamento à esquerda
+        const emInMm = fontSizeMm;
+        const internalPaddingMm = style.textAlign === 'left' ? (emInMm * 0.3) : 0;
+
         const horizontalOffset = (style.paddingLeft || 0) * pxToMmX;
         const verticalOffset = (style.paddingTop || 0) * pxToMmY;
         
-        // Ponto de ancoragem X
-        let textX = x + (style.x || 0) * pxToMmX + horizontalOffset;
+        // Cálculo do X de ancoragem
+        let textX = x + (style.x || 0) * pxToMmX + horizontalOffset + internalPaddingMm;
         if (style.textAlign === 'center') {
-            textX += (style.width || 0) * pxToMmX / 2;
+            textX = x + (style.x || 0) * pxToMmX + (style.width || 0) * pxToMmX / 2 + horizontalOffset;
         } else if (style.textAlign === 'right') {
-            textX += (style.width || 0) * pxToMmX;
+            textX = x + (style.x || 0) * pxToMmX + (style.width || 0) * pxToMmX - internalPaddingMm + horizontalOffset;
         }
 
-        // Ponto de ancoragem Y (Centro vertical do retângulo)
-        const textY = y + ((style.y || 0) + (style.height || 0) / 2) * pxToMmY + verticalOffset;
+        // Cálculo do Y de ancoragem (Centro do retângulo + ajuste visual de baseline)
+        // Adicionamos um pequeno ajuste de 0.5mm para baixo para compensar a renderização do jsPDF
+        const textY = y + ((style.y || 0) + (style.height || 0) / 2) * pxToMmY + verticalOffset + 0.5;
 
-        // Proteção e Sanidade
         const safeX = isFinite(textX) ? textX : x;
         const safeY = isFinite(textY) ? textY : y;
-        const safeWidth = isFinite((style.width || 100) * pxToMmX) ? (style.width || 100) * pxToMmX : 10;
+        const safeWidth = isFinite((style.width || 100) * pxToMmX - internalPaddingMm * 2) ? (style.width || 100) * pxToMmX - internalPaddingMm * 2 : 10;
 
         try {
             pdf.text(
