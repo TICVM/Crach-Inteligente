@@ -28,8 +28,8 @@ export default function StudentBadge({ student, background, styles }: StudentBad
     const rgb = hexToRgb(style.backgroundColor);
     const rgba = rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${style.backgroundOpacity})` : 'transparent';
     
-    // Usamos porcentagem para manter a escala em qualquer tamanho de container, inclusive na impressão
-    const scaledFontSize = `${(style.fontSize / BADGE_BASE_HEIGHT) * 100}%`;
+    // Usamos cqh (Container Query Height) para que a fonte escale proporcionalmente à altura do crachá
+    const scaledFontSize = `${(style.fontSize / BADGE_BASE_HEIGHT) * 100}cqh`;
     
     return (
       <div
@@ -45,10 +45,10 @@ export default function StudentBadge({ student, background, styles }: StudentBad
           textAlign: style.textAlign,
           backgroundColor: rgba,
           borderRadius: `${(style.backgroundRadius / BADGE_BASE_WIDTH) * 100}cqw`,
-          padding: '0 0.2em',
+          padding: '0 0.3em',
           justifyContent: style.textAlign === 'center' ? 'center' : style.textAlign === 'right' ? 'flex-end' : 'flex-start',
           zIndex: 20,
-          lineHeight: 1
+          lineHeight: 1.1
         }}
       >
         <span className="truncate w-full leading-tight">{text}</span>

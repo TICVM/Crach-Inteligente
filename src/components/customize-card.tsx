@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useRef, type ChangeEvent } from 'react';
@@ -48,10 +47,10 @@ const ColorInput = ({ label, value, onChange }: { label: string, value: string, 
   </div>
 );
 
-const OpacitySlider = ({ label, value, onChange }: { label: string, value: number, onChange: (value: number[]) => void }) => (
+const CustomSlider = ({ label, value, min = 0, max = 1, step = 0.1, onChange }: { label: string, value: number, min?: number, max?: number, step?: number, onChange: (value: number[]) => void }) => (
     <div className="grid grid-cols-2 items-center gap-2">
         <Label className="text-xs">{label}</Label>
-        <Slider value={[isNaN(value) ? 0 : value]} onValueChange={onChange} max={1} step={0.1} />
+        <Slider value={[isNaN(value) ? 0 : value]} onValueChange={onChange} min={min} max={max} step={step} />
     </div>
 );
 
@@ -133,10 +132,17 @@ export default function CustomizeCard({
         <StyleInput label="Posição Y" value={badgeStyle[field].y} onChange={(e) => handleStyleChange(field, 'y', safeParseInt(e.target.value))} />
         <StyleInput label="Largura" value={badgeStyle[field].width} onChange={(e) => handleStyleChange(field, 'width', safeParseInt(e.target.value))} />
         <StyleInput label="Altura" value={badgeStyle[field].height} onChange={(e) => handleStyleChange(field, 'height', safeParseInt(e.target.value))} />
-        <StyleInput label="Tam. Fonte" value={badgeStyle[field].fontSize} onChange={(e) => handleStyleChange(field, 'fontSize', safeParseInt(e.target.value))} />
+        
+        <div className="pt-2 border-t mt-2">
+            <CustomSlider label="Tamanho Fonte" value={badgeStyle[field].fontSize} min={10} max={120} step={1} onChange={(val) => handleStyleChange(field, 'fontSize', val[0])} />
+            <div className="flex justify-end mt-1">
+                <span className="text-[10px] text-muted-foreground">{badgeStyle[field].fontSize}px</span>
+            </div>
+        </div>
+
         <ColorInput label="Cor Fonte" value={badgeStyle[field].color} onChange={(e) => handleStyleChange(field, 'color', e.target.value)} />
         <ColorInput label="Cor Fundo" value={badgeStyle[field].backgroundColor} onChange={(e) => handleStyleChange(field, 'backgroundColor', e.target.value)} />
-        <OpacitySlider label="Opacidade" value={badgeStyle[field].backgroundOpacity} onChange={(val) => handleStyleChange(field, 'backgroundOpacity', val[0])} />
+        <CustomSlider label="Opacidade Fundo" value={badgeStyle[field].backgroundOpacity} onChange={(val) => handleStyleChange(field, 'backgroundOpacity', val[0])} />
         <StyleInput label="Arredondar" value={badgeStyle[field].backgroundRadius} onChange={(e) => handleStyleChange(field, 'backgroundRadius', safeParseInt(e.target.value))} />
       </AccordionContent>
     </AccordionItem>

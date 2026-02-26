@@ -66,15 +66,18 @@ export const generatePdf = async (
         const bgRgb = hexToRgb(style.backgroundColor);
         if (bgRgb && style.backgroundOpacity > 0) {
             pdf.setFillColor(bgRgb.r, bgRgb.g, bgRgb.b);
-            pdf.roundedRect(
-                x + style.x * pxToMmX, 
-                y + style.y * pxToMmY, 
-                style.width * pxToMmX, 
-                style.height * pxToMmY, 
-                style.backgroundRadius * pxToMmX, 
-                style.backgroundRadius * pxToMmY, 
-                'F'
-            );
+            // jsPDF não suporta opacidade nativamente para fill, simulamos como sólido ou ignoramos se for muito baixa
+            if (style.backgroundOpacity > 0.2) {
+                pdf.roundedRect(
+                    x + style.x * pxToMmX, 
+                    y + style.y * pxToMmY, 
+                    style.width * pxToMmX, 
+                    style.height * pxToMmY, 
+                    style.backgroundRadius * pxToMmX, 
+                    style.backgroundRadius * pxToMmY, 
+                    'F'
+                );
+            }
         }
 
         const textColorRgb = hexToRgb(style.color);
@@ -82,15 +85,17 @@ export const generatePdf = async (
           pdf.setTextColor(textColorRgb.r, textColorRgb.g, textColorRgb.b);
         }
 
-        // Calibração de fonte: Convertemos o tamanho visual para pontos tipográficos
-        // 1 pt ≈ 0.3527 mm. 
-        const pdfFontSizePt = (style.fontSize * pxToMmY) * 2.83465;
+        // Calibração de fonte: Convertemos o tamanho visual para mm e depois para pontos (pt)
+        // 1 pt ≈ 0.3527 mm. Portanto: mm * 2.83465 = pt
+        const fontSizeMm = style.fontSize * pxToMmY;
+        const pdfFontSizePt = fontSizeMm * 2.83465;
+        
         pdf.setFontSize(pdfFontSizePt);
-        pdf.setFont('helvetica', style.fontWeight);
+        pdf.setFont('helvetica', style.fontWeight === 'bold' ? 'bold' : 'normal');
         
         const textPaddingX = 2 * pxToMmX;
         const textX = x + style.x * pxToMmX + (style.textAlign === 'center' ? style.width * pxToMmX / 2 : style.textAlign === 'right' ? style.width * pxToMmX - textPaddingX : textPaddingX);
-        const textY = y + (style.y + style.height / 2) * pxToMmY + (pdfFontSizePt * 0.15); // Pequeno ajuste de baseline
+        const textY = y + (style.y + style.height / 2) * pxToMmY + (fontSizeMm * 0.2); // Centralização vertical calibrada
 
         pdf.text(
             text,
